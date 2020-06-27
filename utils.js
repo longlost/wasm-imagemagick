@@ -13,7 +13,7 @@ const ErrnoError = function(errno, node) {
 	this.setErrno = function(errno) {
 		this.errno = errno;
 
-		for (var key in ERRNO_CODES) {
+		for (const key in ERRNO_CODES) {
 			if (ERRNO_CODES[key] === errno) {
 
 				this.code = key;
@@ -61,12 +61,12 @@ const abort = what => {
 	ABORT 		 = true;
 	EXITSTATUS = 1;
 
-	throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+	throw `abort(${what}). Build with -s ASSERTIONS=1 for more info.`;
 };
 
 const assert = (condition, text) => {
 	if (!condition) {
-		abort('Assertion failed: ' + text);
+		abort(`Assertion failed: ${text}`);
 	}
 };
 
@@ -88,10 +88,10 @@ const alignUp = (x, multiple) => {
 };
 
 const lengthBytesUTF8 = str => {
-	var len = 0;
+	let len = 0;
 
-	for (var i = 0; i < str.length; ++i) {
-		var u = str.charCodeAt(i);
+	for (let i = 0; i < str.length; ++i) {
+		let u = str.charCodeAt(i);
 
 		if ( u >= 55296 && u <= 57343) {
 			u = 65536 + ((u & 1023) << 10) | str.charCodeAt(++i) & 1023;
@@ -277,7 +277,7 @@ const UTF8ArrayToString = (u8Array, idx) => {
 				str += String.fromCharCode(u0);
 			}
 			else {
-				let ch = u0 - 65536;
+				const ch = u0 - 65536;
 
 				str += String.fromCharCode(55296 | ch >> 10, 56320 | ch & 1023);
 			}

@@ -1,17 +1,22 @@
 
 
-import {ERRNO_CODES} 				from './constants.js';
-import {ErrnoError, assert} from './utils.js';
-import PATH 				 				from './path.js';
+import {ENVIRONMENT_IS_NODE, ERRNO_CODES}  from './constants.js';
+import {ErrnoError, assert} 							 from './utils.js';
+import {createNode, isDir, isFile, isLink} from './fs-shared.js';
+import PATH 				 											 from './path.js';
 
+let fs;
 
 const NODEFS = {
 	isWindows: false,
 
-	staticInit: (function() {
+	staticInit() {
+
+		fs = require('fs');
+
 		NODEFS.isWindows = !!process.platform.match(/^win/);
 
-		var flags = process['binding']('constants');
+		let flags = process['binding']('constants');
 
 		if (flags['fs']) {
 			flags = flags['fs'];
@@ -19,41 +24,39 @@ const NODEFS = {
 
 		NODEFS.flagsForNodeMap = {
 			'1024': flags['O_APPEND'],
-			'64': flags['O_CREAT'],
-			'128': flags['O_EXCL'],
-			'0': flags['O_RDONLY'],
-			'2': flags['O_RDWR'],
+			'64': 	flags['O_CREAT'],
+			'128': 	flags['O_EXCL'],
+			'0': 		flags['O_RDONLY'],
+			'2': 		flags['O_RDWR'],
 			'4096': flags['O_SYNC'],
-			'512': flags['O_TRUNC'],
-			'1': flags['O_WRONLY']
-		}
-	}),
+			'512': 	flags['O_TRUNC'],
+			'1': 		flags['O_WRONLY']
+		};
+	},
 
-	bufferFrom: (function(arrayBuffer) {
-		return Buffer.alloc ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
-	}),
+	bufferFrom: arrayBuffer => Buffer.alloc ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer),
 
-	mount: (function(mount) {
+	mount({opts}) {
 		assert(ENVIRONMENT_IS_NODE);
 
-		return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
-	}),
+		return NODEFS.createNode(null, '/', NODEFS.getMode(opts.root), 0);
+	},
 
-	createNode: (function(parent, name, mode, dev) {
-		if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
+	createNode(parent, name, mode, dev) {
+		if (!isDir(mode) && !isFile(mode) && !isLink(mode)) {
 			throw new ErrnoError(ERRNO_CODES.EINVAL);
 		}
 
-		var node = FS.createNode(parent, name, mode);
+		const node = createNode(parent, name, mode);
 
-		node.node_ops = NODEFS.node_ops;
+		node.node_ops 	= NODEFS.node_ops;
 		node.stream_ops = NODEFS.stream_ops;
 
 		return node;
-	}),
+	},
 
-	getMode: (function(path) {
-		var stat;
+	getMode(path) {
+		let stat;
 
 		try {
 			stat = fs.lstatSync(path);
@@ -62,17 +65,17 @@ const NODEFS = {
 				stat.mode = stat.mode | (stat.mode & 292) >> 2;
 			}
 		}
-		catch (e) {
-			if (!e.code) { throw e; }
+		catch (error) {
+			if (!error.code) { throw error; }
 
-			throw new ErrnoError(ERRNO_CODES[e.code]);
+			throw new ErrnoError(ERRNO_CODES[error.code]);
 		}
 
 		return stat.mode;
-	}),
+	},
 
-	realPath: (function(node) {
-		var parts = [];
+	realPath(node) {
+		const parts = [];
 
 		while (node.parent !== node) {
 			parts.push(node.name);
@@ -82,18 +85,18 @@ const NODEFS = {
 		parts.push(node.mount.opts.root);
 		parts.reverse();
 
-		return PATH.join.apply(null, parts);
-	}),
+		return PATH.join(...parts);
+	},
 
-	flagsForNode: (function(flags) {
+	flagsForNode(flags) {
 		flags &= ~2097152;
 		flags &= ~2048;
 		flags &= ~32768;
 		flags &= ~524288;
 
-		var newFlags = 0;
+		let newFlags = 0;
 
-		for (var k in NODEFS.flagsForNodeMap) {
+		for (const k in NODEFS.flagsForNodeMap) {
 			if (flags & k) {
 				newFlags |= NODEFS.flagsForNodeMap[k];
 				flags ^= k;
@@ -101,24 +104,24 @@ const NODEFS = {
 		}
 
 		if (!flags) {
-			return newFlags
+			return newFlags;
 		}
 		else {
 			throw new ErrnoError(ERRNO_CODES.EINVAL);
 		}
-	}),
+	},
 
 	node_ops: {
-		getattr: (function(node) {
-			var path = NODEFS.realPath(node);
-			var stat;
+		getattr(node) {
+			const path = NODEFS.realPath(node);
+			let stat;
 
 			try {
 				stat = fs.lstatSync(path);
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+			catch (error) {
+				if (!error.code) { throw error; }
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
 
 			if (NODEFS.isWindows && !stat.blksize) {
@@ -144,10 +147,10 @@ const NODEFS = {
 				blksize: stat.blksize,
 				blocks:  stat.blocks
 			};
-		}),
+		},
 
-		setattr: (function(node, attr) {
-			var path = NODEFS.realPath(node);
+		setattr(node, attr) {
+			const path = NODEFS.realPath(node);
 
 			try {
 				if (attr.mode !== undefined) {
@@ -156,7 +159,7 @@ const NODEFS = {
 				}
 
 				if (attr.timestamp !== undefined) {
-					var date = new Date(attr.timestamp);
+					const date = new Date(attr.timestamp);
 
 					fs.utimesSync(path, date, date);
 				}
@@ -165,109 +168,109 @@ const NODEFS = {
 					fs.truncateSync(path, attr.size);
 				}
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
+			catch (error) {
+				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		}),
+		},
 
-		lookup: (function(parent, name) {
-			var path = PATH.join2(NODEFS.realPath(parent), name);
-			var mode = NODEFS.getMode(path);
+		lookup(parent, name) {
+			const path = PATH.join2(NODEFS.realPath(parent), name);
+			const mode = NODEFS.getMode(path);
 
 			return NODEFS.createNode(parent, name, mode);
-		}),
+		},
 
-		mknod: (function(parent, name, mode, dev) {
-			var node = NODEFS.createNode(parent, name, mode, dev);
-			var path = NODEFS.realPath(node);
+		mknod(parent, name, mode, dev) {
+			const node = NODEFS.createNode(parent, name, mode, dev);
+			const path = NODEFS.realPath(node);
 
 			try {
-				if (FS.isDir(node.mode)) {
+				if (isDir(node.mode)) {
 					fs.mkdirSync(path, node.mode);
 				}
 				else {
 					fs.writeFileSync(path, '', {mode: node.mode});
 				}
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
+			catch (error) {
+				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
 
 			return node;
-		}),
+		},
 
-		rename: (function(oldNode, newDir, newName) {
-			var oldPath = NODEFS.realPath(oldNode);
-			var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
+		rename(oldNode, newDir, newName) {
+			const oldPath = NODEFS.realPath(oldNode);
+			const newPath = PATH.join2(NODEFS.realPath(newDir), newName);
 
 			try {
 				fs.renameSync(oldPath, newPath);
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
+			catch (error) {
+				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		}),
+		},
 
-		unlink: (function(parent, name) {
-			var path = PATH.join2(NODEFS.realPath(parent), name);
+		unlink(parent, name) {
+			const path = PATH.join2(NODEFS.realPath(parent), name);
 
 			try {
 				fs.unlinkSync(path);
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
+			catch (error) {
+				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		}),
+		},
 
-		rmdir: (function(parent, name) {
-			var path = PATH.join2(NODEFS.realPath(parent), name);
+		rmdir(parent, name) {
+			const path = PATH.join2(NODEFS.realPath(parent), name);
 
 			try {
 				fs.rmdirSync(path);
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
+			catch (error) {
+				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		}),
+		},
 
-		readdir: (function(node) {
-			var path = NODEFS.realPath(node);
+		readdir(node) {
+			const path = NODEFS.realPath(node);
 
 			try {
 				return fs.readdirSync(path);
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
+			catch (error) {
+				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		}),
+		},
 
-		symlink: (function(parent, newName, oldPath) {
-			var newPath = PATH.join2(NODEFS.realPath(parent), newName);
+		symlink(parent, newName, oldPath) {
+			const newPath = PATH.join2(NODEFS.realPath(parent), newName);
 
 			try {
 				fs.symlinkSync(oldPath, newPath);
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
+			catch (error) {
+				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		}),
+		},
 
-		readlink: (function(node) {
-			var path = NODEFS.realPath(node);
+		readlink(node) {
+			let path = NODEFS.realPath(node);
 
 			try {
 				path = fs.readlinkSync(path);
@@ -275,78 +278,78 @@ const NODEFS = {
 
 				return path;
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
+			catch (error) {
+				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		})
+		}
 	},
 
 	stream_ops: {
-		open: (function(stream) {
-			var path = NODEFS.realPath(stream.node);
+		open(stream) {
+			const path = NODEFS.realPath(stream.node);
 
 			try {
-				if (FS.isFile(stream.node.mode)) {
+				if (isFile(stream.node.mode)) {
 					stream.nfd = fs.openSync(path, NODEFS.flagsForNode(stream.flags));
 				}
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
+			catch (error) {
+				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		}),
+		},
 
-		close: (function(stream) {
+		close(stream) {
 			try {
-				if (FS.isFile(stream.node.mode) && stream.nfd) {
+				if (isFile(stream.node.mode) && stream.nfd) {
 					fs.closeSync(stream.nfd);
 				}
 			}
-			catch (e) {
-				if (!e.code) { throw e; }
+			catch (error) {
+				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		}),
+		},
 
-		read: (function(stream, buffer, offset, length,position) {
+		read(stream, buffer, offset, length, position) {
 			if (length === 0) { return 0; }
 
 			try {
 				return fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
 			}
-			catch (e) {
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+			catch (error) {
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		}),
+		},
 
-		write: (function(stream, buffer, offset, length, position) {
+		write(stream, buffer, offset, length, position) {
 			try {
 				return fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
 			}
-			catch (e) {
-				throw new ErrnoError(ERRNO_CODES[e.code]);
+			catch (error) {
+				throw new ErrnoError(ERRNO_CODES[error.code]);
 			}
-		}),
+		},
 
-		llseek: (function(stream, offset, whence) {
-			var position = offset;
+		llseek(stream, offset, whence) {
+			let position = offset;
 
 			if (whence === 1) {
 				position += stream.position;
 			}
 			else if (whence === 2) {
-				if (FS.isFile(stream.node.mode)) {
+				if (isFile(stream.node.mode)) {
 					try {
 						var stat = fs.fstatSync(stream.nfd);
 
 						position += stat.size;
 					}
-					catch (e) {
-						throw new ErrnoError(ERRNO_CODES[e.code]);
+					catch (error) {
+						throw new ErrnoError(ERRNO_CODES[error.code]);
 					}
 				}
 			}
@@ -356,10 +359,9 @@ const NODEFS = {
 			}
 
 			return position;
-		})
+		}
 	}
 };
 
 
 export default NODEFS;
-

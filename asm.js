@@ -19,10 +19,55 @@ import {
 } from './memory.js';
 
 import {
+	STACKTOP
+} from './runtime.js';
+
+import {
+	___buildEnvironment,
+	___clock_gettime,
+	___lock,
+	___map_file,
+	___setErrNo,
+	___unlock,
+	__exit,
+	_abort,
+	_clock,
+	_emscripten_longjmp,
+	_execvp,
+	_exit,
+	_fork,
+	_getenv,
+	_getpwnam,
+	_longjmp,
+	_nanosleep,
+	_raise,
+	_sysconf,
+	_system,
+	_waitpid
+} from './environment.js';
+
+import {
+	_sigaction,
+	_sigaddset,
+	_sigemptyset,
+	_signal,
+	_sigprocmask
+} from './signal.js';
+
+import {
 	__get_daylight,
 	__get_timezone,
-	__get_tzname
+	__get_tzname,
+	_gmtime_r,
+	_gettimeofday,
+	_localtime_r,
+	_time,
+	_times
 } from './time.js';
+
+import {
+	_strftime
+} from './date.js';
 
 import {
 	___syscall10,
@@ -67,6 +112,7 @@ import {
 
 import {
 	stackRestore,
+	stackSave,
 	invoke_dii,
 	invoke_i,
 	invoke_ii,
@@ -258,6 +304,10 @@ const setAsm = () => {
 		return Module['asm']['stackRestore'].apply(null, arguments);
 	});
 
+	stackSave = Module['stackSave'] = (function() {
+		return Module['asm']['stackSave'].apply(null, arguments);
+	});
+
 	Module['___errno_location'] = (function() {
 		return Module['asm']['___errno_location'].apply(null, arguments);
 	});
@@ -268,10 +318,6 @@ const setAsm = () => {
 
 	Module['setThrew'] = (function() {
 		return Module['asm']['setThrew'].apply(null, arguments);
-	});
-
-	Module['stackSave'] = (function() {
-		return Module['asm']['stackSave'].apply(null, arguments);
 	});
 
 	Module['dynCall_dii'] = (function() {

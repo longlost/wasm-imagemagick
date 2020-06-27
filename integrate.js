@@ -6,20 +6,28 @@ import {
 	ENVIRONMENT_IS_WORKER,
 	WASM_PAGE_SIZE
 } from './constants.js';
+
 import {
 	abort,
 	alignUp,
 	assert,
 	err
 } from './utils.js';
+
 import {
 	Module,
 	scriptDirectory
 } from './module.js';
+
 import {
 	updateGlobalBuffer,
 	updateGlobalBufferViews
 } from './memory.js';
+
+import {
+	addRunDependency,
+	removeRunDependency
+} from './runtime.js';
 
 
 const dataURIPrefix = 'data:application/octet-stream;base64,';

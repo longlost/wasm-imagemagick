@@ -4,12 +4,14 @@ import {
 	ENVIRONMENT_IS_WEB,
 	ENVIRONMENT_IS_WORKER,
 	ENVIRONMENT_IS_NODE,
-	ENVIRONMENT_IS_SHELL,
+	ENVIRONMENT_IS_SHELL
 } from './constants.js';
+
 import {
 	err,
 	out,
 } from './utils.js';
+
 import {
 	reader,
 	readBinary

@@ -1,30 +1,39 @@
 
 
-import {_free} 	 from './utils.js';
-import {_malloc} from './memory.js';
+import {
+	ERRNO_CODES,
+	PAGE_SIZE
+} from './constants.js';
+
+import {
+	_free, 
+	ENVIRONMENT_IS_NODE, 
+	ENVIRONMENT_IS_WEB, 
+	ENVIRONMENT_IS_WORKER, 
+	abort
+}	from './utils.js';
+
+import {
+	HEAP32,
+	Pointer_stringify,
+	allocateUTF8,
+	getMemory, 
+	writeAsciiToMemory
+} from './memory.js';
+
+import {Module} 						from './module.js';
+import {runtimeInitialized} from './runtime.js';
 
 
-const ENV 			 = {};
-let staticSealed = false;
+const ENV 					 = {};
+const MAX_ENV_VALUES = 64;
+const TOTAL_ENV_SIZE = 1024;
 
-
-function getMemory(size) {
-	if (!staticSealed) { return; }
-
-	staticAlloc(size);
-
-	if (!runtimeInitialized) { return; }
-
-	dynamicAlloc(size);
-
-	return _malloc(size);
-}
-
+// NOT an arrow function since it's being used as 
+// a function object with ___buildEnvironment.called assignment.
 function ___buildEnvironment(environ) {
-	var MAX_ENV_VALUES = 64;
-	var TOTAL_ENV_SIZE = 1024;
-	var poolPtr;
-	var envPtr;
+	let poolPtr;
+	let envPtr;
 
 	if (!___buildEnvironment.called) {
 		___buildEnvironment.called = true;
@@ -47,14 +56,14 @@ function ___buildEnvironment(environ) {
 		poolPtr = HEAP32[envPtr >> 2];
 	}
 
-	var strings 	= [];
-	var totalSize = 0;
+	let lines 		= [];
+	let totalSize = 0;
 
-	for (var key in ENV) {
+	for (const key in ENV) {
 		if (typeof ENV[key] === 'string') {
-			var line = key + '=' + ENV[key];
+			const line = `${key}=${ENV[key]}`;
 
-			strings.push(line);
+			lines.push(line);
 			totalSize += line.length;
 		}
 	}
@@ -63,41 +72,39 @@ function ___buildEnvironment(environ) {
 		throw new Error('Environment size exceeded TOTAL_ENV_SIZE!');
 	}
 
-	var ptrSize = 4;
+	const ptrSize = 4;
 
-	for(var i = 0; i < strings.length; i++) {
-		var line = strings[i];
-
+	lines.forEach((line, index) => {
 		writeAsciiToMemory(line, poolPtr);
 
-		HEAP32[envPtr + i * ptrSize >> 2] = poolPtr;
+		HEAP32[envPtr + index * ptrSize >> 2] = poolPtr;
 		poolPtr += line.length + 1;
-	}
+	});
 
-	HEAP32[envPtr + strings.length * ptrSize >> 2] = 0;
+	HEAP32[envPtr + lines.length * ptrSize >> 2] = 0;
 }
 
-function _emscripten_get_now() {
+const _emscripten_get_now = () => {
 	abort();
-}
+};
 
-function _emscripten_get_now_is_monotonic() {
-	return ENVIRONMENT_IS_NODE || 
-				 (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && 
-				 self['performance'] && 
-				 self['performance']['now'];
-}
+const _emscripten_get_now_is_monotonic = () => (
+	ENVIRONMENT_IS_NODE || 
+	(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && 
+	self['performance'] && 
+	self['performance']['now'];
+);
 
-function ___setErrNo(value) {
+const ___setErrNo = value => {
 	if (Module['___errno_location']) {
 		HEAP32[Module['___errno_location']() >> 2] = value;
 	}
 
 	return value;
-}
+};
 
-function _clock_gettime(clk_id, tp) {
-	var now;
+const _clock_gettime = (clk_id, tp) => {
+	let now;
 
 	if (clk_id === 0) {
 		now = Date.now();
@@ -110,36 +117,34 @@ function _clock_gettime(clk_id, tp) {
 		return - 1;
 	}
 
-	HEAP32[tp >> 2] = now / 1e3 | 0;
+	HEAP32[tp >> 2] 		= now / 1e3 | 0;
 	HEAP32[tp + 4 >> 2] = now % 1e3 * 1e3 * 1e3 | 0;
 
 	return 0;
-}
+};
 
-function ___clock_gettime() {
-	return _clock_gettime.apply(null, arguments);
-}
+const ___clock_gettime = (...args) => _clock_gettime(...args);
 
-function ___lock() {
+const ___lock = () => {};
 
-}
-
-function ___map_file(pathname,size) {
+const ___map_file = (pathname, size) => {
 	___setErrNo(ERRNO_CODES.EPERM);
 
 	return -1;
-}
+};
 
-function ___unlock() {}
+const ___unlock = () => {};
 
-function __exit(status) {
+const __exit = status => {
 	exit(status);
-}
+};
 
-function _abort() {
+const _abort = () => {
 	Module['abort']();
-}
+};
 
+// NOT an arrow function since it's being used as 
+// a function object with _clock.start assignment.
 function _clock() {
 	if (_clock.start === undefined) {
 		_clock.start = Date.now();
@@ -148,36 +153,36 @@ function _clock() {
 	return (Date.now() - _clock.start) * (1e6 / 1e3) | 0;
 }
 
-function _longjmp(env, value) {
+const _longjmp = (env, value) => {
 	Module['setThrew'](env, value || 1);
 
 	throw 'longjmp';
-}
+};
 
-function _emscripten_longjmp(env, value) {
+const _emscripten_longjmp = (env, value) => {
 	_longjmp(env, value);
-}
+};
 
-function _execl() {
+const _execl = () => {
 	___setErrNo(ERRNO_CODES.ENOEXEC);
 
 	return -1;
-}
+};
 
-function _execvp() {
-	return _execl.apply(null, arguments);
-}
+const _execvp = (...args) => _execl(...args);
 
-function _exit(status) {
+const _exit = status => {
 	__exit(status);
-}
+};
 
-function _fork() {
+const _fork = () => {
 	___setErrNo(ERRNO_CODES.EAGAIN);
 
 	return -1;
-}
+};
 
+// NOT an arrow function since it's being used as 
+// a function object with _getenv.ret assignment.
 function _getenv(name) {
 	if (name === 0) { return 0; }
 
@@ -194,52 +199,55 @@ function _getenv(name) {
 	return _getenv.ret;
 }
 
-function _getpwnam() {
+const _getpwnam = () => {
 	throw 'getpwnam: TODO';
-}
+};
 
-function _usleep(useconds) {
-	var msec = useconds / 1e3;
+const _usleep = useconds => {
+	const msec = useconds / 1e3;
 
-	if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']) {
-		var start = self['performance']['now']();
+	if (
+		(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && 
+		self['performance'] && 
+		self['performance']['now']
+	) {
+		const start = self['performance']['now']();
 
 		while (self['performance']['now']() - start < msec) {}
-
 	}
 	else {
-		var start = Date.now();
+		const start = Date.now();
 
-		while(Date.now() - start < msec){}
+		while(Date.now() - start < msec) {}
 	}
 
 	return 0;
-}
+};
 
-function _nanosleep(rqtp, rmtp) {
-	var seconds 		= HEAP32[rqtp >> 2];
-	var nanoseconds = HEAP32[rqtp + 4 >> 2];
+const _nanosleep = (rqtp, rmtp) => {
+	const seconds 		= HEAP32[rqtp >> 2];
+	const nanoseconds = HEAP32[rqtp + 4 >> 2];
 
 	if (rmtp !== 0) {
-		HEAP32[rmtp >> 2] = 0;
+		HEAP32[rmtp >> 2] 		= 0;
 		HEAP32[rmtp + 4 >> 2] = 0;
 	}
 
 	return _usleep(seconds * 1e6 + nanoseconds / 1e3);
-}
+};
 
-function _raise(sig) {
+const _raise = sig => {
 	___setErrNo(ERRNO_CODES.ENOSYS);
 
 	return -1;
-}
+};
 
-function _sysconf(name) {
+const _sysconf = name => {
 	switch(name) {
 		case 30:
 			return PAGE_SIZE;
 		case 85:
-			var maxHeapSize = 2 * 1024 * 1024 * 1024 - 65536;
+			const maxHeapSize = 2 * 1024 * 1024 * 1024 - 65536;
 
 			return maxHeapSize / PAGE_SIZE;
 		case 132:
@@ -399,27 +407,44 @@ function _sysconf(name) {
 	___setErrNo(ERRNO_CODES.EINVAL);
 
 	return -1;
-}
+};
 
-function _system(command) {
+const _system = command => {
 	___setErrNo(ERRNO_CODES.EAGAIN);
 
 	return -1;
-}
+};
 
-function _wait(stat_loc) {
+const _wait = stat_loc => {
 	___setErrNo(ERRNO_CODES.ECHILD);
 
 	return -1;
-}
+};
 
-function _waitpid() {
-	return _wait.apply(null, arguments);
-}
+const _waitpid = (...args) => _wait(...args);
 
 
 export {
+	___buildEnvironment,
+	___clock_gettime,
+	___lock,
+	___map_file,
+	___setErrNo,
+	___unlock,
+	__exit,
+	_abort,
+	_clock,
 	_emscripten_get_now,
-	staticSealed
+	_emscripten_longjmp,
+	_execvp,
+	_exit,
+	_fork,
+	_getenv,
+	_getpwnam,
+	_longjmp,
+	_nanosleep,
+	_raise,
+	_sysconf,
+	_system,
+	_waitpid
 };
-

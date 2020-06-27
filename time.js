@@ -1,6 +1,7 @@
 
-
-import {_memset} from './utils.js';
+import {ALLOC_STATIC} 							 from './constants.js';
+import {_memset, intArrayFromString} from './utils.js';
+import {HEAP32, allocate}  					 from './memory.js';
 
 // Set after 'asm' in 'wasm-interface.js'.
 let __get_daylight;
@@ -8,19 +9,19 @@ let __get_timezone;
 let __get_tzname;
 
 
-function _gettimeofday(ptr) {
-	var now = Date.now();
+const _gettimeofday = ptr => {
+	const now = Date.now();
 
 	HEAP32[ptr >> 2] 		 = now / 1e3 | 0;
 	HEAP32[ptr + 4 >> 2] = now % 1e3 * 1e3 | 0;
 
 	return 0;
-}
+};
 
-var ___tm_timezone = allocate(intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
+const ___tm_timezone = allocate(intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
 
-function _gmtime_r(time, tmPtr) {
-	var date = new Date(HEAP32[time >> 2] * 1e3);
+const _gmtime_r = (time, tmPtr) => {
+	const date = new Date(HEAP32[time >> 2] * 1e3);
 
 	HEAP32[tmPtr >> 2] 			= date.getUTCSeconds();
 	HEAP32[tmPtr + 4 >> 2] 	= date.getUTCMinutes();
@@ -32,57 +33,55 @@ function _gmtime_r(time, tmPtr) {
 	HEAP32[tmPtr + 36 >> 2] = 0;
 	HEAP32[tmPtr + 32 >> 2] = 0;
 
-	var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
-	var yday 	= (date.getTime() - start) / (1e3 * 60 * 60 * 24) | 0;
+	const start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
+	const yday 	= (date.getTime() - start) / (1e3 * 60 * 60 * 24) | 0;
 
 	HEAP32[tmPtr + 28 >> 2] = yday;
 	HEAP32[tmPtr + 40 >> 2] = ___tm_timezone;
 
 	return tmPtr;
-}
+};
 
+const extractZone = date => {
+	const match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
 
+	return match ? match[1] : 'GMT';
+};
 
-function _tzset() {
-	if (_tzset.called) { return; }
+let _tzsetCalled = false;
 
-	_tzset.called = true;
+const _tzset = () => {
+	if (_tzsetCalled) { return; }
+
+	_tzsetCalled = true;
 
 	HEAP32[__get_timezone() >> 2] = (new Date).getTimezoneOffset() * 60;
 
-	var winter = new Date(2e3, 0, 1);
-	var summer = new Date(2e3, 6, 1);
+	const winter = new Date(2e3, 0, 1);
+	const summer = new Date(2e3, 6, 1);
 
-	HEAP32[__get_daylight() >> 2] = Number(winter.getTimezoneOffset() != summer.getTimezoneOffset());
+	HEAP32[__get_daylight() >> 2] = Number(winter.getTimezoneOffset() !== summer.getTimezoneOffset());
 
-	function extractZone(date) {
-		var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
-
-		return match ? match[1] : 'GMT';
-	}
-
-
-	const ALLOC_NORMAL = 0;
-
-	var winterName 		= extractZone(winter);
-	var summerName 		= extractZone(summer);
-	var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
-	var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
+	const ALLOC_NORMAL 	= 0;
+	const winterName 		= extractZone(winter);
+	const summerName 		= extractZone(summer);
+	const winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
+	const summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
 
 	if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
-		HEAP32[__get_tzname() >> 2] = winterNamePtr;
+		HEAP32[__get_tzname() >> 2] 		= winterNamePtr;
 		HEAP32[__get_tzname() + 4 >> 2] = summerNamePtr;
 	}
 	else {
-		HEAP32[__get_tzname() >> 2] = summerNamePtr;
+		HEAP32[__get_tzname() >> 2] 		= summerNamePtr;
 		HEAP32[__get_tzname() + 4 >> 2] = winterNamePtr;
 	}
-}
+};
 
-function _localtime_r(time, tmPtr) {
+const _localtime_r = (time, tmPtr) => {
 	_tzset();
 
-	var date = new Date(HEAP32[time >> 2] * 1e3);
+	const date = new Date(HEAP32[time >> 2] * 1e3);
 
 	HEAP32[tmPtr >> 2] 			= date.getSeconds();
 	HEAP32[tmPtr + 4 >> 2] 	= date.getMinutes();
@@ -92,50 +91,55 @@ function _localtime_r(time, tmPtr) {
 	HEAP32[tmPtr + 20 >> 2] = date.getFullYear() - 1900;
 	HEAP32[tmPtr + 24 >> 2] = date.getDay();
 
-	var start = new Date(date.getFullYear(), 0, 1);
-	var yday 	= (date.getTime() - start.getTime()) / (1e3 * 60 * 60 * 24) | 0;
+	const start = new Date(date.getFullYear(), 0, 1);
+	const yday 	= (date.getTime() - start.getTime()) / (1e3 * 60 * 60 * 24) | 0;
 
 	HEAP32[tmPtr + 28 >> 2] = yday;
 	HEAP32[tmPtr + 36 >> 2] =- (date.getTimezoneOffset() * 60);
 
-	var summerOffset = (new Date(2e3, 6, 1)).getTimezoneOffset();
-	var winterOffset = start.getTimezoneOffset();
+	const summerOffset = (new Date(2e3, 6, 1)).getTimezoneOffset();
+	const winterOffset = start.getTimezoneOffset();
 
-	var dst = (
+	const dst = (
 		summerOffset != winterOffset && 
 		date.getTimezoneOffset() == Math.min(winterOffset, summerOffset)
 	) | 0;
 
 	HEAP32[tmPtr + 32 >> 2] = dst;
 
-	var zonePtr = HEAP32[__get_tzname() + (dst ? 4 : 0) >> 2];
+	const zonePtr = HEAP32[__get_tzname() + (dst ? 4 : 0) >> 2];
 
 	HEAP32[tmPtr + 40 >> 2] = zonePtr;
 
 	return tmPtr;
-}
+};
 
-function _time(ptr) {
-	var ret = Date.now() / 1e3 | 0;
+const _time = ptr => {
+	const ret = Date.now() / 1e3 | 0;
 
 	if (ptr) {
 		HEAP32[ptr >> 2] = ret;
 	}
 
 	return ret;
-}
+};
 
-function _times(buffer) {
+const _times = buffer => {
 	if (buffer !== 0) {
 		_memset(buffer, 0, 16);
 	}
 
 	return 0;
-}
+};
 
 
 export {
 	__get_daylight,
 	__get_timezone,
-	__get_tzname
+	__get_tzname,
+	_gmtime_r,
+	_gettimeofday,
+	_localtime_r,
+	_time,
+	_times
 };
