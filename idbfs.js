@@ -1,15 +1,39 @@
 
+
+import {
+	chmod,
+	isDir,
+	isFile,
+	lookupPath,
+	mkdir,
+	readdir,
+	rmdir,
+	stat,
+	unlink,
+	utime,
+	writeFile
+} from './fs-shared.js';
+
 import {assert} from './utils.js';
 import PATH 		from './path.js';
+import MEMFS 		from './memfs.js';
+
+
+window = window || self;
+
+
+const isRealDir = p => p !== '.' && p !== '..';
+
+const toAbsolute = root => p => PATH.join2(root, p);
 
 
 const IDBFS = {
 	dbs: {},
 
-	indexedDB: (function() {
+	indexedDB() {
 		if (typeof indexedDB !== 'undefined') { return indexedDB; }
 
-		var ret = null;
+		let ret = null;
 
 		if (typeof window === 'object') {
 			ret = window.indexedDB 			 || 
@@ -21,58 +45,56 @@ const IDBFS = {
 		assert(ret, 'IDBFS used, but indexedDB not supported');
 
 		return ret;
-	}),
+	},
 
-	DB_VERSION: 21,
+	DB_VERSION: 		21,
 	DB_STORE_NAME: 'FILE_DATA',
 
-	mount: (function(mount) {
-		return MEMFS.mount.apply(null, arguments);
-	}),
+	mount: (...args) => MEMFS.mount(...args),
 
-	syncfs: (function(mount, populate, callback) {
-		IDBFS.getLocalSet(mount, (function(err, local) {
+	syncfs(mount, populate, callback) {
+		IDBFS.getLocalSet(mount, (err, local) => {
 			if (err) {
 				return callback(err);
 			}
 
-			IDBFS.getRemoteSet(mount, (function(err, remote) {
+			IDBFS.getRemoteSet(mount, (err, remote) => {
 				if (err) {
 					return callback(err);
 				}
 
-				var src = populate ? remote : local;
-				var dst = populate ? local : remote;
+				const src = populate ? remote : local;
+				const dst = populate ? local 	: remote;
 
 				IDBFS.reconcile(src, dst, callback);
-			}));
-		}));
-	}),
+			});
+		});
+	},
 
-	getDB: (function(name, callback) {
-		var db = IDBFS.dbs[name];
+	getDB(name, callback) {
+		const db = IDBFS.dbs[name];
 
 		if (db) {
-			return callback(null,db);
+			return callback(null, db);
 		}
 
-		var req;
+		let request;
 
 		try {
-			req = IDBFS.indexedDB().open(name, IDBFS.DB_VERSION);
+			request = IDBFS.indexedDB().open(name, IDBFS.DB_VERSION);
 		}
-		catch (e) {
-			return callback(e);
+		catch (error) {
+			return callback(error);
 		}
 
-		if (!req) { 
+		if (!request) { 
 			return callback('Unable to connect to IndexedDB');
 		}
 
-		req.onupgradeneeded = (function(e) {
-			var db 					= e.target.result;
-			var transaction = e.target.transaction;
-			var fileStore;
+		request.onupgradeneeded = event => {
+			const {result: db, transaction} = event.target;
+
+			let fileStore;
 
 			if (db.objectStoreNames.contains(IDBFS.DB_STORE_NAME)) {
 				fileStore = transaction.objectStore(IDBFS.DB_STORE_NAME);
@@ -84,237 +106,236 @@ const IDBFS = {
 			if (!fileStore.indexNames.contains('timestamp')) {
 				fileStore.createIndex('timestamp', 'timestamp', {unique: false});
 			}
-		});
+		};
 
-		req.onsuccess = (function() {
-			db = req.result;
+		request.onsuccess = () => {
+			const db 				= request.result;
 			IDBFS.dbs[name] = db;
 
 			callback(null, db);
-		});
+		};
 
-		req.onerror = (function(e) {
-			callback(this.error);
-			e.preventDefault();
-		});
-	}),
+		request.onerror = event => {
+			callback(request.error);
+			event.preventDefault();
+		};
+	},
 
-	getLocalSet: (function(mount, callback) {
-		var entries = {};
+	getLocalSet(mount, callback) {
+		const entries = {};		
 
-		function isRealDir(p) {
-			return p !== '.' && p !== '..';
-		}
-
-		function toAbsolute(root) {
-			return (function(p) {
-				return PATH.join2(root, p);
-			});
-		}
-
-		var check = FS.readdir(mount.mountpoint).
-									filter(isRealDir).
-									map(toAbsolute(mount.mountpoint));
+		const check = readdir(mount.mountpoint).
+										filter(isRealDir).
+										map(toAbsolute(mount.mountpoint));
 
 		while (check.length) {
-			var path = check.pop();
-			var stat;
+			const path = check.pop();
+			let static;
 
 			try {
-				stat = FS.stat(path);
+				static = stat(path);
 			}
-			catch (e) {
-				return callback(e);
-			}
-
-			if (FS.isDir(stat.mode)) {
-				check.push.apply(check, FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
+			catch (error) {
+				return callback(error);
 			}
 
-			entries[path] = {timestamp: stat.mtime};
+			if (isDir(static.mode)) {
+				check.push.apply(check, readdir(path).filter(isRealDir).map(toAbsolute(path)));
+			}
+
+			entries[path] = {timestamp: static.mtime};
 		}
 
-		return callback(null, {type: 'local', entries: entries});
-	}),
+		return callback(null, {type: 'local', entries});
+	},
 
-	getRemoteSet: (function(mount, callback) {
-		var entries = {};
+	getRemoteSet(mount, callback) {
+		const entries = {};
 
-		IDBFS.getDB(mount.mountpoint, (function(err, db) {
+		IDBFS.getDB(mount.mountpoint, (err, db) => {
 			if (err) {
 				return callback(err);
 			}
 
 			try {
-				var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
+				const transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
 
-				transaction.onerror = (function(e) {
-					callback(this.error);
-					e.preventDefault();
-				});
+				transaction.onerror = event => {
+					callback(transaction.error);
+					event.preventDefault();
+				};
 
-				var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
-				var index = store.index('timestamp');
+				const store = transaction.objectStore(IDBFS.DB_STORE_NAME);
+				const index = store.index('timestamp');
 
-				index.openKeyCursor().onsuccess = (function(event) {
-					var cursor = event.target.result;
+				index.openKeyCursor().onsuccess = event => {
+					const cursor = event.target.result;
 
 					if (!cursor) {
-						return callback(null, {type: 'remote', db: db, entries: entries});
+						return callback(null, {type: 'remote', db, entries});
 					}
 
 					entries[cursor.primaryKey] = {timestamp: cursor.key};
 					cursor.continue();
-				});
+				};
 			}
-			catch (e) {
-				return callback(e);
+			catch (error) {
+				return callback(error);
 			}
-		}));
-	}),
+		});
+	},
 
-	loadLocalEntry: (function(path, callback) {
-		var stat;
-		var node;
+	loadLocalEntry(path, callback) {
+		let static;
+		let node;
 
 		try {
-			var lookup = FS.lookupPath(path);
+			const lookup = lookupPath(path);
 
-			node = lookup.node;
-			stat = FS.stat(path);
+			node 	 = lookup.node;
+			static = stat(path);
 		}
-		catch (e) {
-			return callback(e);
+		catch (error) {
+			return callback(error);
 		}
 
-		if (FS.isDir(stat.mode)) {
-			return callback(null, {timestamp: stat.mtime, mode:stat.mode});
+		const {mode, mtime} = static;
+
+		if (isDir(mode)) {
+			return callback(null, {timestamp: mtime, mode});
 		}
-		else if (FS.isFile(stat.mode)) {
+		else if (isFile(mode)) {
 			node.contents = MEMFS.getFileDataAsTypedArray(node);
 
-			return callback(null, {timestamp: stat.mtime, mode: stat.mode, contents: node.contents});
+			return callback(null, {timestamp: mtime, mode, contents: node.contents});
 		}
 		else {
 			return callback(new Error('node type not supported'));
 		}
-	}),
+	},
 
-	storeLocalEntry: (function(path, entry, callback) {
+	storeLocalEntry(path, entry, callback) {
 		try {
-			if (FS.isDir(entry.mode)) {
-				FS.mkdir(path, entry.mode);
+
+			const {contents, mode, timestamp} = entry;
+
+			if (isDir(mode)) {
+				mkdir(path, mode);
 			}
-			else if (FS.isFile(entry.mode)) {
-				FS.writeFile(path, entry.contents, {canOwn: true});
+			else if (isFile(mode)) {
+				writeFile(path, contents, {canOwn: true});
 			}
 			else {
 				return callback(new Error('node type not supported'));
 			}
 
-			FS.chmod(path, entry.mode);
-			FS.utime(path, entry.timestamp, entry.timestamp);
+			chmod(path, mode);
+			utime(path, timestamp, timestamp);
 		}
-		catch (e) {
-			return callback(e);
+		catch (error) {
+			return callback(error);
 		}
 
 		callback(null);
-	}),
+	},
 
-	removeLocalEntry: (function(path, callback) {
+	removeLocalEntry(path, callback) {
 		try {
-			var lookup = FS.lookupPath(path);
-			var stat 	 = FS.stat(path);
 
-			if (FS.isDir(stat.mode)) {
-				FS.rmdir(path);
+			// Used to check for errors??
+			lookupPath(path);
+
+			const {mode} = stat(path);
+
+			if (isDir(mode)) {
+				rmdir(path);
 			}
-			else if (FS.isFile(stat.mode)) {
-				FS.unlink(path);
+			else if (isFile(mode)) {
+				unlink(path);
 			}
 		}
-		catch (e) {
-			return callback(e);
+		catch (error) {
+			return callback(error);
 		}
 
 		callback(null);
-	}),
+	},
 
-	loadRemoteEntry: (function(store, path, callback) {
-		var req = store.get(path);
+	loadRemoteEntry(store, path, callback) {
+		const request = store.get(path);
 
-		req.onsuccess = (function(event) {
+		request.onsuccess = event => {
 			callback(null, event.target.result);
-		});
+		};
 
-		req.onerror = (function(e) {
-			callback(this.error);
-			e.preventDefault();
-		});
-	}),
+		request.onerror = event => {
+			callback(request.error);
+			event.preventDefault();
+		};
+	},
 
-	storeRemoteEntry: (function(store, path, entry, callback) {
-		var req = store.put(entry,path);
+	storeRemoteEntry(store, path, entry, callback) {
+		const request = store.put(entry, path);
 
-		req.onsuccess = (function() {
+		request.onsuccess = () => {
 			callback(null);
-		});
+		};
 
-		req.onerror = (function(e) {
-			callback(this.error);
-			e.preventDefault();
-		});
-	}),
+		request.onerror = event => {
+			callback(request.error);
+			event.preventDefault();
+		};
+	},
 
-	removeRemoteEntry: (function(store, path, callback) {
-		var req = store.delete(path);
+	removeRemoteEntry(store, path, callback) {
+		const request = store.delete(path);
 
-		req.onsuccess = (function() {
+		request.onsuccess = () => {
 			callback(null);
-		});
+		};
 
-		req.onerror = (function(e) {
-			callback(this.error);
-			e.preventDefault();
-		});
-	}),
+		request.onerror = event => {
+			callback(request.error);
+			event.preventDefault();
+		};
+	},
 
-	reconcile: (function(src, dst, callback) {
-		var total  = 0;
-		var create = [];
+	reconcile(src, dst, callback) {		
+		const create = [];
+		let total  	 = 0;
 
-		Object.keys(src.entries).forEach((function(key) {
-			var e  = src.entries[key];
-			var e2 = dst.entries[key];
+		Object.keys(src.entries).forEach(key => {
+			const entry  = src.entries[key];
+			const entry2 = dst.entries[key];
 
-			if (!e2 || e.timestamp > e2.timestamp) {
+			if (!entry2 || entry.timestamp > entry2.timestamp) {
 				create.push(key);
 				total++;
 			}
-		}));
+		});
 
-		var remove = [];
+		const remove = [];
 
-		Object.keys(dst.entries).forEach((function(key) {
-			var e  = dst.entries[key];
-			var e2 = src.entries[key];
+		Object.keys(dst.entries).forEach(key => {
+			const entry = src.entries[key];
 
-			if (!e2) {
+			if (!entry) {
 				remove.push(key);
 				total++;
 			}
-		}));
+		});
 
 		if (!total) {
 			return callback(null);
 		}
 
-		var completed 	= 0;
-		var db 					= src.type === 'remote' ? src.db : dst.db;
-		var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
-		var store 			= transaction.objectStore(IDBFS.DB_STORE_NAME);
+		const db 					= src.type === 'remote' ? src.db : dst.db;
+		const transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
+		const store 			= transaction.objectStore(IDBFS.DB_STORE_NAME);
+		let completed 		= 0;
 
+		// NOT an arrow function since it is being used as 
+		// a function object with the 'done.errored' assignment.
 		function done(err) {
 			if (err) {
 				if (!done.errored) {
@@ -330,37 +351,37 @@ const IDBFS = {
 			}
 		}
 
-		transaction.onerror = (function(e) {
-			done(this.error);
-			e.preventDefault();
-		});
+		transaction.onerror = event => {
+			done(transaction.error);
+			event.preventDefault();
+		};
 
-		create.sort().forEach((function(path) {
+		create.sort().forEach(path => {
 			if (dst.type === 'local') {
-				IDBFS.loadRemoteEntry(store, path, (function(err, entry) {
+				IDBFS.loadRemoteEntry(store, path, (err, entry) => {
 					if (err) { return done(err); }
 
 					IDBFS.storeLocalEntry(path, entry, done);
-				}));
+				});
 			}
 			else {
-				IDBFS.loadLocalEntry(path, (function(err, entry) {
+				IDBFS.loadLocalEntry(path, (err, entry) => {
 					if (err) { return done(err); }
 
 					IDBFS.storeRemoteEntry(store, path, entry, done);
-				}));
+				});
 			}
-		}));
+		});
 
-		remove.sort().reverse().forEach((function(path) {
+		remove.sort().reverse().forEach(path => {
 			if (dst.type === 'local') {
 				IDBFS.removeLocalEntry(path, done);
 			}
 			else {
 				IDBFS.removeRemoteEntry(store, path, done);
 			}
-		}));
-	})
+		});
+	}
 };
 
 

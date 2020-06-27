@@ -26,21 +26,23 @@ import {
 	TOTAL_STACK,
 	allocateUTF8OnStack,
 	stackAlloc,
-	staticAlloc,
+	staticAlloc,	
+	staticSealed
 	updateGlobalBufferViews
 } from './memory.js';
 
 import {
 	_emscripten_get_now,
-	staticSealed
 } from './environment.js';
 
 import {
 	__ATEXIT__,
 	__ATINIT__,
 	__ATMAIN__,
+	STACKTOP,
 	ensureInitRuntime,
 	exit,
+	run,
 	shouldRunNow
 } from './runtime.js';
 
@@ -132,7 +134,6 @@ if (ENVIRONMENT_IS_NODE) {
 
 
 let STACK_BASE 	 = 0;
-let STACKTOP 	 	 = 0;
 let STACK_MAX  	 = 0;
 let DYNAMIC_BASE = 0;
 

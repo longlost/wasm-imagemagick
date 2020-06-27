@@ -6,6 +6,7 @@ import {
 	ENVIRONMENT_IS_NODE,
 	ENVIRONMENT_IS_SHELL
 } from './constants.js';
+
 import {assert} from './utils.js';
 
 

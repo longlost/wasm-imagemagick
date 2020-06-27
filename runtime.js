@@ -1,6 +1,6 @@
 
-
-import {Module} from './module.js';
+import {ABORT, EXITSTATUS} 	from './utils.js';
+import {ExitStatus, Module} from './module.js';
 
 
 const __ATPRERUN__ 		 = [];
@@ -10,10 +10,7 @@ const __ATEXIT__ 			 = [];
 const __ATPOSTRUN__ 	 = [];
 let runtimeInitialized = false;
 let runtimeExited 		 = false;
-
-var shouldRunNow = true;
-
-
+let shouldRunNow 			 = true;
 
 
 const addOnPreRun = cb => {
@@ -30,19 +27,19 @@ const callRuntimeCallbacks = callbacks => {
 			continue;
 		}
 
-		const func = callback.func;
+		const {arg, func} = callback;
 
 		if (typeof func === 'number') {
 
-			if (callback.arg === undefined) {
+			if (arg === undefined) {
 				Module['dynCall_v'](func);
 			}
 			else {
-				Module['dynCall_vi'](func, callback.arg);
+				Module['dynCall_vi'](func, arg);
 			}
 		}
 		else {
-			func(callback.arg === undefined ? null : callback.arg);
+			func(arg === undefined ? null : arg);
 		}
 	}
 };
@@ -62,23 +59,23 @@ const preRun = () => {
 	}
 };
 
-function ensureInitRuntime() {
+const ensureInitRuntime = () => {
 	if (runtimeInitialized) { return; }
 
 	runtimeInitialized = true;
 	callRuntimeCallbacks(__ATINIT__);
-}
+};
 
-function preMain() {
+const preMain = () => {
 	callRuntimeCallbacks(__ATMAIN__);
-}
+};
 
-function exitRuntime() {
+const exitRuntime = () => {
 	callRuntimeCallbacks(__ATEXIT__);
 	runtimeExited = true;
-}
+};
 
-function postRun() {
+const postRun = () => {
 	if (Module['postRun']) {
 
 		if (typeof Module['postRun'] === 'function') {
@@ -91,17 +88,15 @@ function postRun() {
 	}
 
 	callRuntimeCallbacks(__ATPOSTRUN__);
-}
+};
 
-function addOnPostRun(cb) {
+const addOnPostRun = cb => {
 	__ATPOSTRUN__.unshift(cb);
-}
+};
 
 
-var runDependencies 			= 0;
-var runDependencyWatcher 	= null;
-var dependenciesFulfilled = null;
-
+let runDependencies 			= 0;
+let dependenciesFulfilled = null;
 
 
 dependenciesFulfilled = function runCaller() {
@@ -114,16 +109,15 @@ dependenciesFulfilled = function runCaller() {
 	}
 };
 
-
-function addRunDependency(id) {
+const addRunDependency = id => {
 	runDependencies++;
 
 	if (Module['monitorRunDependencies']) {
 		Module['monitorRunDependencies'](runDependencies);
 	}
-}
+};
 
-function removeRunDependency(id) {
+const removeRunDependency = id => {
 	runDependencies--;
 
 	if (Module['monitorRunDependencies']) {
@@ -132,11 +126,6 @@ function removeRunDependency(id) {
 
 	if (runDependencies == 0) {
 
-		if (runDependencyWatcher !== null) {
-			clearInterval(runDependencyWatcher);
-			runDependencyWatcher = null;
-		}
-
 		if (dependenciesFulfilled) {
 			const callback = dependenciesFulfilled;
 
@@ -144,85 +133,86 @@ function removeRunDependency(id) {
 			callback();
 		}
 	}
-}
+};
 
+const doRun = args => {
+	if (Module['calledRun']) { return; }
 
+	Module['calledRun'] = true;
 
-function run(args) {
+	if (ABORT) { return; }
+
+	ensureInitRuntime();
+	preMain();
+
+	if (Module['onRuntimeInitialized']) {
+		Module['onRuntimeInitialized']();
+	}
+
+	if (Module['_main'] && shouldRunNow) {
+		Module['callMain'](args);
+	}
+
+	postRun();
+};
+
+const run = args => {
 	args = args || Module['arguments'];
 
-	if (runDependencies > 0) { return;}
+	if (runDependencies > 0) { return; }
 
 	preRun();
 
 	if (runDependencies > 0) { return; }
 
-	if (Module['calledRun']) { return; }
-
-	function doRun() {
-		if (Module['calledRun']) { return; }
-
-		Module['calledRun'] = true;
-
-		if (ABORT) { return; }
-
-		ensureInitRuntime();
-		preMain();
-
-		if (Module['onRuntimeInitialized']) {
-			Module['onRuntimeInitialized']();
-		}
-
-		if (Module['_main'] && shouldRunNow) {
-			Module['callMain'](args);
-		}
-
-		postRun();
-	}
+	if (Module['calledRun']) { return; }	
 
 	if (Module['setStatus']) {
 		Module['setStatus']('Running...');
 
-		setTimeout((function() {
+		setTimeout(() => {
 
-			setTimeout((function() {
+			setTimeout(() => {
 				Module['setStatus']('');
-			}), 1);
+			}, 1);
 
-			doRun();
-		}), 1);
+			doRun(args);
+		}, 1);
 	}
 	else {
-		doRun();
+		doRun(args);
 	}
-}
+};
 
 Module['run'] = run;
 
+let STACKTOP = 0;
 
-var initialStackTop;
-
-function exit(status, implicit) {
+const exit = (status, implicit) => {
 	if (implicit && Module['noExitRuntime'] && status === 0) { return; }
 
 	if (!Module['noExitRuntime']) {
 		ABORT 		 = true;
 		EXITSTATUS = status;
-		STACKTOP 	 = initialStackTop;
+		STACKTOP 	 = 0;
 
 		exitRuntime();
 	}
 
 	Module['quit'](status, new ExitStatus(status));
-}
+};
 
 
 export {
 	__ATEXIT__,
 	__ATINIT__,
 	__ATMAIN__,
+	STACKTOP,
+	addRunDependency,
 	ensureInitRuntime,
 	exit,
+	removeRunDependency,
+	run,
 	runtimeInitialized,
 	shouldRunNow
 };

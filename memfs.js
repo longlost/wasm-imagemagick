@@ -4,16 +4,28 @@ import {ERRNO_CODES} 				from './constants.js';
 import {ErrnoError, assert} from './utils.js';
 import {_malloc} 						from './memory.js';
 
+import {
+	chrdev_stream_ops,
+	createNode,
+	genericErrors,
+	isBlkdev,
+	isChrdev,
+	isDir,
+	isFIFO,
+	isFile,
+	isLink,
+	lookupNode
+} from './fs-shared.js';
+
 
 const MEMFS = {
 	ops_table: null,
 
-	mount: (function(mount) {
-		return MEMFS.createNode(null, '/', 16384 | 511, 0);
-	}),
+	mount: () => MEMFS.createNode(null, '/', 16384 | 511, 0),
 
-	createNode: (function(parent, name, mode, dev) {
-		if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
+	createNode(parent, name, mode, dev) {
+
+		if (isBlkdev(mode) || isFIFO(mode)) {
 			throw new ErrnoError(ERRNO_CODES.EPERM);
 		}
 
@@ -62,29 +74,29 @@ const MEMFS = {
 						getattr: MEMFS.node_ops.getattr,
 						setattr: MEMFS.node_ops.setattr
 					},
-					stream: FS.chrdev_stream_ops
+					stream: chrdev_stream_ops
 				}
 			};
 		}
 
-		var node = FS.createNode(parent, name, mode, dev);
+		const node = createNode(parent, name, mode, dev);
 
-		if (FS.isDir(node.mode)) {
+		if (isDir(node.mode)) {
 			node.node_ops 	= MEMFS.ops_table.dir.node;
 			node.stream_ops = MEMFS.ops_table.dir.stream;
 			node.contents 	= {};
 		}
-		else if (FS.isFile(node.mode)) {
+		else if (isFile(node.mode)) {
 			node.node_ops 	= MEMFS.ops_table.file.node;
 			node.stream_ops = MEMFS.ops_table.file.stream;
 			node.usedBytes 	= 0;
 			node.contents 	= null;
 		}
-		else if (FS.isLink(node.mode)) {
+		else if (isLink(node.mode)) {
 			node.node_ops 	= MEMFS.ops_table.link.node;
 			node.stream_ops = MEMFS.ops_table.link.stream;
 		}
-		else if (FS.isChrdev(node.mode)) {
+		else if (isChrdev(node.mode)) {
 			node.node_ops 	= MEMFS.ops_table.chrdev.node;
 			node.stream_ops = MEMFS.ops_table.chrdev.stream;
 		}
@@ -96,46 +108,51 @@ const MEMFS = {
 		}
 
 		return node;
-	}),
+	},
 
-	getFileDataAsRegularArray: (function(node) {
-		if (node.contents && node.contents.subarray) {
-			var arr = [];
+	getFileDataAsRegularArray(node) {
+		const {contents, usedBytes} = node;
 
-			for(var i = 0; i < node.usedBytes; ++i) {
-				arr.push(node.contents[i]);
+		if (contents && contents.subarray) {
+			const arr = [];
+
+			for(let i = 0; i < usedBytes; ++i) {
+				arr.push(contents[i]);
 			}
 
 			return arr;
 		}
 
-		return node.contents;
-	}),
+		return contents;
+	},
 
-	getFileDataAsTypedArray: (function(node) {
-		if (!node.contents) {
+	getFileDataAsTypedArray(node) {
+		const {contents, usedBytes} = node;
+
+		if (!contents) {
 			return new Uint8Array;
 		}
 
-		if (node.contents.subarray) {
-			return node.contents.subarray(0, node.usedBytes);
+		if (contents.subarray) {
+			return contents.subarray(0, usedBytes);
 		}
 
-		return new Uint8Array(node.contents);
-	}),
+		return new Uint8Array(contents);
+	},
 
-	expandFileStorage: (function(node, newCapacity) {
+	expandFileStorage(node, newCapacity) {
+
 		if (node.contents && node.contents.subarray && newCapacity > node.contents.length) {
-			node.contents = MEMFS.getFileDataAsRegularArray(node);
+			node.contents  = MEMFS.getFileDataAsRegularArray(node);
 			node.usedBytes = node.contents.length;
 		}
 
 		if (!node.contents || node.contents.subarray) {
-			var prevCapacity = node.contents ? node.contents.length : 0;
+			const prevCapacity = node.contents ? node.contents.length : 0;
 
 			if (prevCapacity >= newCapacity) { return; }
 
-			var CAPACITY_DOUBLING_MAX = 1024 * 1024;
+			const CAPACITY_DOUBLING_MAX = 1024 * 1024;
 
 			newCapacity = Math.max(newCapacity, prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2 : 1.125) | 0);
 
@@ -143,7 +160,7 @@ const MEMFS = {
 				newCapacity = Math.max(newCapacity, 256);
 			}
 
-			var oldContents = node.contents;
+			const oldContents = node.contents;
 
 			node.contents = new Uint8Array(newCapacity);
 
@@ -161,9 +178,9 @@ const MEMFS = {
 		while (node.contents.length < newCapacity) {
 			node.contents.push(0);
 		}
-	}),
+	},
 
-	resizeFileStorage: (function(node, newSize) {
+	resizeFileStorage(node, newSize) {
 		if (node.usedBytes == newSize) { return; }
 
 		if (newSize == 0) {
@@ -174,7 +191,7 @@ const MEMFS = {
 		}
 
 		if (!node.contents || node.contents.subarray) {
-			var oldContents = node.contents;
+			const oldContents = node.contents;
 
 			node.contents = new Uint8Array(new ArrayBuffer(newSize));
 
@@ -199,77 +216,78 @@ const MEMFS = {
 				node.contents.push(0);
 			}
 
-			node.usedBytes = newSize
+			node.usedBytes = newSize;
 		}
-	}),
+	},
 
 	node_ops: {
-		getattr: (function(node) {
-			var attr = {};
+		getattr(node) {
+			const {id, link, mode, rdev, timestamp, usedBytes} = node;
+			const attr = {};
 
-			attr.dev 	 = FS.isChrdev(node.mode) ? node.id : 1;
-			attr.ino 	 = node.id;
-			attr.mode  = node.mode;
+			attr.dev 	 = isChrdev(mode) ? id : 1;
+			attr.ino 	 = id;
+			attr.mode  = mode;
 			attr.nlink = 1;
 			attr.uid 	 = 0;
 			attr.gid 	 = 0;
-			attr.rdev  = node.rdev;
+			attr.rdev  = rdev;
 
-			if (FS.isDir(node.mode)) {
+			if (isDir(mode)) {
 				attr.size = 4096;
 			}
-			else if (FS.isFile(node.mode)) {
-				attr.size = node.usedBytes;
+			else if (isFile(mode)) {
+				attr.size = usedBytes;
 			}
-			else if (FS.isLink(node.mode)) {
-				attr.size = node.link.length;
+			else if (isLink(mode)) {
+				attr.size = link.length;
 			}
 			else {
 				attr.size = 0;
 			}
 
-			attr.atime 	 = new Date(node.timestamp);
-			attr.mtime 	 = new Date(node.timestamp);
-			attr.ctime 	 = new Date(node.timestamp);
+			attr.atime 	 = new Date(timestamp);
+			attr.mtime 	 = new Date(timestamp);
+			attr.ctime 	 = new Date(timestamp);
 			attr.blksize = 4096;
 			attr.blocks  = Math.ceil(attr.size / attr.blksize);
 
 			return attr;
-		}),
+		},
 
-		setattr: (function(node, attr) {
-			if (attr.mode !== undefined) {
-				node.mode = attr.mode;
+		setattr(node, attr) {
+			const {mode, size, timestamp} = attr;
+
+			if (mode !== undefined) {
+				node.mode = mode;
 			}
 
-			if (attr.timestamp !== undefined) {
-				node.timestamp = attr.timestamp;
+			if (timestamp !== undefined) {
+				node.timestamp = timestamp;
 			}
 
-			if (attr.size !== undefined) {
-				MEMFS.resizeFileStorage(node, attr.size);
+			if (size !== undefined) {
+				MEMFS.resizeFileStorage(node, size);
 			}
-		}),
+		},
 
-		lookup: (function(parent, name) {
-			throw FS.genericErrors[ERRNO_CODES.ENOENT];
-		}),
+		lookup(parent, name) {
+			throw genericErrors[ERRNO_CODES.ENOENT];
+		},
 
-		mknod: (function(parent, name, mode, dev) {
-			return MEMFS.createNode(parent, name, mode, dev);
-		}),
+		mknod: (parent, name, mode, dev) => MEMFS.createNode(parent, name, mode, dev),
 
-		rename: (function(old_node, new_dir, new_name) {
-			if (FS.isDir(old_node.mode)) {
-				var new_node;
+		rename(old_node, new_dir, new_name) {
+			if (isDir(old_node.mode)) {
+				let new_node;
 
 				try {
-					new_node = FS.lookupNode(new_dir, new_name);
+					new_node = lookupNode(new_dir, new_name);
 				}
-				catch (e) {}
+				catch (_) {}
 
 				if (new_node) {
-					for (var i in new_node.contents) {
+					for (const i in new_node.contents) {
 						throw new ErrnoError(ERRNO_CODES.ENOTEMPTY);
 					}
 				}
@@ -280,26 +298,26 @@ const MEMFS = {
 			old_node.name 						 = new_name;
 			new_dir.contents[new_name] = old_node;
 			old_node.parent 					 = new_dir;
-		}),
+		},
 
-		unlink: (function(parent, name) {
+		unlink(parent, name) {
 			delete parent.contents[name];
-		}),
+		},
 
-		rmdir: (function(parent, name) {
-			var node = FS.lookupNode(parent, name);
+		rmdir(parent, name) {
+			const node = lookupNode(parent, name);
 
-			for (var i in node.contents) {
+			for (const i in node.contents) {
 				throw new ErrnoError(ERRNO_CODES.ENOTEMPTY);
 			}
 
 			delete parent.contents[name];
-		}),
+		},
 
-		readdir: (function(node) {
-			var entries = ['.', '..'];
+		readdir(node) {
+			const entries = ['.', '..'];
 
-			for (var key in node.contents) {
+			for (const key in node.contents) {
 				if (!node.contents.hasOwnProperty(key)) {
 					continue;
 				}
@@ -308,51 +326,51 @@ const MEMFS = {
 			}
 
 			return entries;
-		}),
+		},
 
-		symlink: (function(parent, newname, oldpath) {
-			var node = MEMFS.createNode(parent, newname, 511 | 40960, 0);
+		symlink(parent, newname, oldpath) {
+			const node = MEMFS.createNode(parent, newname, 511 | 40960, 0);
 
 			node.link = oldpath;
 
 			return node;
-		}),
+		},
 
-		readlink: (function(node) {
-			if (!FS.isLink(node.mode)) {
+		readlink(node) {
+			if (!isLink(node.mode)) {
 				throw new ErrnoError(ERRNO_CODES.EINVAL);
 			}
 
 			return node.link;
-		})
+		}
 	},
 
 	stream_ops: {
-		read: (function(stream, buffer, offset, length, position) {
-			var contents = stream.node.contents;
+		read(stream, buffer, offset, length, position) {
+			const {contents, usedBytes} = stream.node;
 
-			if (position >= stream.node.usedBytes) { return 0; }
+			if (position >= usedBytes) { return 0; }
 
-			var size = Math.min(stream.node.usedBytes - position, length);
+			const size = Math.min(usedBytes - position, length);
 
 			assert(size >= 0);
 
-			if (size > 8 && contents.subarray){
+			if (size > 8 && contents.subarray) {
 				buffer.set(contents.subarray(position, position + size), offset);
 			}
 			else {
-				for (var i = 0; i < size; i++) {
+				for (let i = 0; i < size; i++) {
 					buffer[offset + i] = contents[position + i];
 				}
 			}
 
 			return size;
-		}),
+		},
 
-		write: (function(stream, buffer, offset, length, position, canOwn) {
+		write(stream, buffer, offset, length, position, canOwn) {
 			if (!length) { return 0; }
 
-			var node = stream.node;
+			const node = stream.node;
 
 			node.timestamp = Date.now();
 
@@ -382,7 +400,7 @@ const MEMFS = {
 				node.contents.set(buffer.subarray(offset, offset + length), position);
 			} 
 			else {
-				for (var i = 0; i < length; i++) {
+				for (let i = 0; i < length; i++) {
 					node.contents[position + i] = buffer[offset + i];
 				}
 			}
@@ -390,16 +408,16 @@ const MEMFS = {
 			node.usedBytes = Math.max(node.usedBytes, position + length);
 
 			return length;
-		}),
+		},
 
-		llseek: (function(stream, offset, whence) { 
-			var position = offset;
+		llseek(stream, offset, whence) { 
+			let position = offset;
 
 			if (whence === 1) {
 				position += stream.position;
 			}
 			else if (whence === 2) {
-				if (FS.isFile(stream.node.mode)) {
+				if (isFile(stream.node.mode)) {
 					position += stream.node.usedBytes;
 				}
 			}
@@ -409,25 +427,25 @@ const MEMFS = {
 			}
 
 			return position;
-		}),
+		},
 
-		allocate: (function(stream, offset, length) {
+		allocate(stream, offset, length) {
 			MEMFS.expandFileStorage(stream.node, offset + length);
 			stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
-		}),
+		},
 
-		mmap: (function(stream, buffer, offset, length, position, prot, flags) {
-			if (!FS.isFile(stream.node.mode)) {
+		mmap(stream, buffer, offset, length, position, prot, flags) {
+			if (!isFile(stream.node.mode)) {
 				throw new ErrnoError(ERRNO_CODES.ENODEV);
 			}
 
-			var ptr;
-			var allocated;
-			var contents = stream.node.contents;
+			let ptr;
+			let allocated;
+			let contents = stream.node.contents;
 
 			if (!(flags & 2) && (contents.buffer === buffer || contents.buffer === buffer.buffer)) {
 				allocated = false;
-				ptr = contents.byteOffset;
+				ptr 			= contents.byteOffset;
 			}
 			else {
 				if (position > 0 || position + length < stream.node.usedBytes) {
@@ -439,8 +457,8 @@ const MEMFS = {
 					}
 				}
 
-				allocated = true;;
-				ptr = _malloc(length);
+				allocated = true;
+				ptr 			= _malloc(length);
 
 				if (!ptr) {
 					throw new ErrnoError(ERRNO_CODES.ENOMEM);
@@ -449,11 +467,11 @@ const MEMFS = {
 				buffer.set(contents, ptr);
 			}
 
-			return {ptr: ptr, allocated: allocated};
-		}),
+			return {ptr, allocated};
+		},
 
-		msync: (function(stream, buffer, offset, length, mmapFlags) {
-			if (!FS.isFile(stream.node.mode)) {
+		msync(stream, buffer, offset, length, mmapFlags) {
+			if (!isFile(stream.node.mode)) {
 				throw new ErrnoError(ERRNO_CODES.ENODEV);
 			}
 
@@ -461,11 +479,12 @@ const MEMFS = {
 				return 0;
 			}
 
-			var bytesWritten = MEMFS.stream_ops.write(stream, buffer, 0, length, offset, false);
+			MEMFS.stream_ops.write(stream, buffer, 0, length, offset, false);
 
 			return 0;
-		})
+		}
 	}
 };
+
 
 export default MEMFS;

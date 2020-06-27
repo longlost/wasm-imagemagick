@@ -3,7 +3,7 @@ import {
 	ALLOC_STATIC, 
 	ASMJS_PAGE_SIZE,
 	WASM_PAGE_SIZE
-} from '.constants.js';
+} from './constants.js';
 
 import {
 	UTF8ArrayToString, 
@@ -385,6 +385,20 @@ const allocateUTF8OnStack = str => {
 	return ret;
 }
 
+let staticSealed = false;
+
+const getMemory = size => {
+	if (!staticSealed) { return; }
+
+	staticAlloc(size);
+
+	if (!runtimeInitialized) { return; }
+
+	dynamicAlloc(size);
+
+	return _malloc(size);
+};
+
 const getTotalMemory = () => TOTAL_MEMORY;
 
 const writeArrayToMemory = (array, buffer) => {
@@ -453,7 +467,10 @@ export {
 	_emscripten_replace_memory,
 	_malloc,
 	DYNAMICTOP_PTR,
+	HEAP8,
+	HEAP16,
 	HEAP32,
+	HEAPU8,
 	STATICTOP,
 	TOTAL_STACK,
 	Pointer_stringify,
@@ -462,11 +479,11 @@ export {
 	allocateUTF8,
 	allocateUTF8OnStack,
 	buffer,
-	dynamicAlloc,
 	enlargeMemory,
+	getMemory,
 	getTotalMemory,
 	stackAlloc,
-	staticAlloc,
+	staticSealed,
 	updateGlobalBuffer,
 	updateGlobalBufferViews,
 	writeArrayToMemory,
