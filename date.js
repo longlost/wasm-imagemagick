@@ -263,7 +263,7 @@ const EXPANSION_RULES_2 = {
 			return '01';
 		}
 
-		const daysDifference;
+		let daysDifference;
 
 		if (firstWeekStartThisYear.getFullYear() < date.tm_year + 1900) {
 			daysDifference = date.tm_yday + 32 - firstWeekStartThisYear.getDate();

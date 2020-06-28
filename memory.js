@@ -262,7 +262,14 @@ const allocate = (slab, types, allocator, ptr) => {
 
 	if (singleType === 'i8') {
 		if (slab.subarray || slab.slice) {
-			HEAPU8.set(slab, ret);
+
+
+
+//			HEAPU8.set(slab, ret);
+
+
+
+
 		}
 		else {
 			HEAPU8.set(new Uint8Array(slab), ret);
@@ -483,6 +490,7 @@ export {
 	getMemory,
 	getTotalMemory,
 	stackAlloc,
+	staticAlloc,
 	staticSealed,
 	updateGlobalBuffer,
 	updateGlobalBufferViews,

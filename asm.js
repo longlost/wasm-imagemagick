@@ -256,7 +256,7 @@ Module['asmLibraryArg'] = {
 
 
 const setAsm = () => {
-	const asm = Module['asm'](Module.['asmGlobalArg'], Module.['asmLibraryArg'], buffer);
+	const asm = Module['asm'](Module['asmGlobalArg'], Module['asmLibraryArg'], buffer);
 
 	Module['asm'] = asm;
 

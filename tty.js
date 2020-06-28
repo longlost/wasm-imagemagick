@@ -115,14 +115,19 @@ const TTY = {
 
 	default_tty_ops: {
 
-		async get_char(tty) {
+		get_char(tty) {
 
 			if (!tty.input.length) {
 				let result = null;
 
 				if (ENVIRONMENT_IS_NODE) {
 
-					const fs = await import('fs');
+					// This is a workaround for bundlers to skip 
+					// these dynamic require statements that 
+					// pull in modules that are built into Node.
+					const bundlerIgnoredRequire = m => eval('require')(m);
+
+					const fs = bundlerIgnoredRequire('fs');
 
 					const BUFSIZE 				= 256;
 					const buf 						= new Buffer(BUFSIZE);
@@ -172,7 +177,12 @@ const TTY = {
 				}
 				else {
 
-					const readline = await import('readline');
+					// This is a workaround for bundlers to skip 
+					// these dynamic require statements that 
+					// pull in modules that are built into Node.
+					const bundlerIgnoredRequire = m => eval('require')(m);
+
+					const readline = bundlerIgnoredRequire('readline');
 
 					if (typeof readline === 'function') {
 						result = readline();

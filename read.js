@@ -14,17 +14,22 @@ const getReaders = () => {
 
 	if (ENVIRONMENT_IS_NODE) {
 
+		// This is a workaround for bundlers to skip 
+		// these dynamic require statements that 
+		// pull in modules that are built into Node.
+		const bundlerIgnoredRequire = m => eval('require')(m);
+
 		let nodeFS;
 		let nodePath;
 
 		const reader = (filename, binary) => {
 
 			if (!nodeFS) {
-				nodeFS = require('fs');
+				nodeFS = bundlerIgnoredRequire('fs'); 
 			}
 
 			if (!nodePath) {
-				nodePath = require('path');
+				nodePath = bundlerIgnoredRequire('path'); 
 			}
 
 			const normalized = nodePath['normalize'](filename);

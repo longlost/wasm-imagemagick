@@ -130,20 +130,20 @@ const IDBFS = {
 
 		while (check.length) {
 			const path = check.pop();
-			let static;
+			let statObj;
 
 			try {
-				static = stat(path);
+				statObj = stat(path);
 			}
 			catch (error) {
 				return callback(error);
 			}
 
-			if (isDir(static.mode)) {
+			if (isDir(statObj.mode)) {
 				check.push.apply(check, readdir(path).filter(isRealDir).map(toAbsolute(path)));
 			}
 
-			entries[path] = {timestamp: static.mtime};
+			entries[path] = {timestamp: statObj.mtime};
 		}
 
 		return callback(null, {type: 'local', entries});
@@ -186,20 +186,20 @@ const IDBFS = {
 	},
 
 	loadLocalEntry(path, callback) {
-		let static;
+		let statObj;
 		let node;
 
 		try {
 			const lookup = lookupPath(path);
 
-			node 	 = lookup.node;
-			static = stat(path);
+			node 	  = lookup.node;
+			statObj = stat(path);
 		}
 		catch (error) {
 			return callback(error);
 		}
 
-		const {mode, mtime} = static;
+		const {mode, mtime} = statObj;
 
 		if (isDir(mode)) {
 			return callback(null, {timestamp: mtime, mode});

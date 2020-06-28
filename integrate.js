@@ -106,10 +106,11 @@ const wasmReallocBuffer = size => {
 
 const fixImports = imports => imports;
 
-
 const asm2wasmImports = {
 	'f64-rem':  (x, y) => x % y,
-	'debugger': () => debugger
+	'debugger': () => {
+		debugger;
+	}
 };
 
 const info = {

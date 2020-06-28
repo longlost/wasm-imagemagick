@@ -46,7 +46,7 @@ const normalizeArray = (parts, allowAboveRoot) => {
 };
 
 
-export {
+export default {
 	basename,
 	dirname,
 	extname,
