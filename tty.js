@@ -5,14 +5,8 @@ import {
 	ERRNO_CODES
 } from './constants.js';
 
-import {
-	ErrnoError,
-	err,
-	intArrayFromString,
-	out,
-	registerDevice,
-	UTF8ArrayToString
-} from './utils.js';
+import utils from './utils.js';
+import '@ungap/global-this';
 
 
 const TTY = {
@@ -30,7 +24,7 @@ const TTY = {
 			ops
 		};
 
-		registerDevice(dev, TTY.stream_ops);
+		utils.registerDevice(dev, TTY.stream_ops);
 	},
 
 	stream_ops: {
@@ -38,7 +32,7 @@ const TTY = {
 			const tty = TTY.ttys[stream.node.rdev];
 
 			if (!tty) {
-				throw new ErrnoError(ERRNO_CODES.ENODEV);
+				throw new utils.ErrnoError(ERRNO_CODES.ENODEV);
 			}
 
 			stream.tty 			= tty;
@@ -56,7 +50,7 @@ const TTY = {
 		read(stream, buffer, offset, length, pos) {
 
 			if (!stream.tty || !stream.tty.ops.get_char) {
-				throw new ErrnoError(ERRNO_CODES.ENXIO);
+				throw new utils.ErrnoError(ERRNO_CODES.ENXIO);
 			}
 
 			let bytesRead = 0;
@@ -68,11 +62,11 @@ const TTY = {
 					result = stream.tty.ops.get_char(stream.tty);
 				}
 				catch (_) {
-					throw new ErrnoError(ERRNO_CODES.EIO);
+					throw new utils.ErrnoError(ERRNO_CODES.EIO);
 				}
 
 				if (result === undefined && bytesRead === 0) {
-					throw new ErrnoError(ERRNO_CODES.EAGAIN);
+					throw new utils.ErrnoError(ERRNO_CODES.EAGAIN);
 				}
 
 				if (result === null || result === undefined) {
@@ -93,7 +87,7 @@ const TTY = {
 		write(stream, buffer, offset, length, pos) {
 
 			if (!stream.tty || !stream.tty.ops.put_char) {
-				throw new ErrnoError(ERRNO_CODES.ENXIO);
+				throw new utils.ErrnoError(ERRNO_CODES.ENXIO);
 			}
 
 			for (let i = 0; i < length; i++) {
@@ -101,7 +95,7 @@ const TTY = {
 					stream.tty.ops.put_char(stream.tty, buffer[offset + i]);
 				}
 				catch (_) {
-					throw new ErrnoError(ERRNO_CODES.EIO);
+					throw new utils.ErrnoError(ERRNO_CODES.EIO);
 				}
 			}
 
@@ -168,8 +162,8 @@ const TTY = {
 						result = null;
 					}
 				} 
-				else if (typeof window !== 'undefined' && typeof window.prompt === 'function') {
-					result = window.prompt('Input: ');
+				else if (typeof globalThis !== 'undefined' && typeof globalThis.prompt === 'function') {
+					result = globalThis.prompt('Input: ');
 
 					if (result !== null) {
 						result += '\n';
@@ -197,7 +191,7 @@ const TTY = {
 					return null;
 				}
 
-				tty.input = intArrayFromString(result, true);
+				tty.input = utils.intArrayFromString(result, true);
 			}
 
 			return tty.input.shift();
@@ -206,7 +200,7 @@ const TTY = {
 		put_char(tty, val) {
 
 			if (val === null || val === 10) {
-				out(UTF8ArrayToString(tty.output, 0));
+				utils.out(utils.UTF8ArrayToString(tty.output, 0));
 				tty.output = [];
 			}
 			else {
@@ -218,7 +212,7 @@ const TTY = {
 
 		flush(tty) {
 			if (tty.output && tty.output.length > 0) {
-				out(UTF8ArrayToString(tty.output, 0));
+				utils.out(utils.UTF8ArrayToString(tty.output, 0));
 				tty.output = [];
 			}
 		}
@@ -229,7 +223,7 @@ const TTY = {
 		put_char(tty, val) {
 
 			if (val === null || val === 10) {
-				err(UTF8ArrayToString(tty.output, 0));
+				utils.err(utils.UTF8ArrayToString(tty.output, 0));
 				tty.output = [];
 			}
 			else {
@@ -241,7 +235,7 @@ const TTY = {
 
 		flush(tty) {
 			if (tty.output && tty.output.length > 0) {
-				err(UTF8ArrayToString(tty.output, 0));
+				utils.err(utils.UTF8ArrayToString(tty.output, 0));
 				tty.output = [];
 			}
 		}

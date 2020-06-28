@@ -4,14 +4,8 @@ import {
 	ERRNO_CODES
 } from './constants.js';
 
-import {
-	ErrnoError,
-	getDevice,
-	lengthBytesUTF8,
-	stringToUTF8Array
-} from './utils.js';
-
-import PATH from './path.js';
+import utils from './utils.js';
+import PATH  from './path.js';
 
 const MAX_OPEN_FDS 		 = 4096;
 const streams 		 		 = [];
@@ -34,7 +28,7 @@ let root 							= null;
 const genericErrors = {};
 const errorCode 	  = ERRNO_CODES.ENOENT;
 
-genericErrors[errorCode] 			 = new ErrnoError(errorCode);
+genericErrors[errorCode] 			 = new utils.ErrnoError(errorCode);
 genericErrors[errorCode].stack = '<generic error, no stack>';
 
 
@@ -98,7 +92,7 @@ const isRoot = node => node === node.parent;
 
 const chrdev_stream_ops = {
 	open(stream) {
-		var device = getDevice(stream.node.rdev);
+		var device = utils.getDevice(stream.node.rdev);
 
 		stream.stream_ops = device.stream_ops;
 
@@ -108,7 +102,7 @@ const chrdev_stream_ops = {
 	},
 
 	llseek() {
-		throw new ErrnoError(ERRNO_CODES.ESPIPE);
+		throw new utils.ErrnoError(ERRNO_CODES.ESPIPE);
 	}
 };
 
@@ -227,7 +221,7 @@ const lookupNode = (parent, name) => {
 	const err = mayLookup(parent);
 
 	if (err) {
-		throw new ErrnoError(err, parent);
+		throw new utils.ErrnoError(err, parent);
 	}
 
 	const hash = hashName(parent.id, name);
@@ -282,7 +276,7 @@ const lookupPath = (path, opts = {}) => {
 	opts = {...defaults, ...opts};
 
 	if (opts.recurse_count > 8) {
-		throw new ErrnoError(ERRNO_CODES.ELOOP);
+		throw new utils.ErrnoError(ERRNO_CODES.ELOOP);
 	}
 
 	const parts = PATH.normalizeArray(
@@ -323,7 +317,7 @@ const lookupPath = (path, opts = {}) => {
 				current = lookup.node;
 
 				if (count++ > 40) {
-					throw new ErrnoError(ERRNO_CODES.ELOOP);
+					throw new utils.ErrnoError(ERRNO_CODES.ELOOP);
 				}
 			}
 		}
@@ -337,11 +331,11 @@ readlink = path => {
 	const {node: link} = lookupPath(path);
 
 	if (!link) {
-		throw new ErrnoError(ERRNO_CODES.ENOENT);
+		throw new utils.ErrnoError(ERRNO_CODES.ENOENT);
 	}
 
 	if (!link.node_ops.readlink) {
-		throw new ErrnoError(ERRNO_CODES.EINVAL);
+		throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 	}
 
 	return PATH.resolve(getPath(link.parent), link.node_ops.readlink(link));
@@ -351,7 +345,7 @@ const readdir = path => {
 	const {node} = FS.lookupPath(path, {follow: true});
 
 	if (!node.node_ops.readdir) {
-		throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+		throw new FS.utils.ErrnoError(ERRNO_CODES.ENOTDIR);
 	}
 
 	return node.node_ops.readdir(node);
@@ -361,11 +355,11 @@ const stat = (path, dontFollow) => {
 	const {node} = lookupPath(path, {follow: !dontFollow});
 
 	if (!node) {
-		throw new ErrnoError(ERRNO_CODES.ENOENT);
+		throw new utils.ErrnoError(ERRNO_CODES.ENOENT);
 	}
 
 	if (!node.node_ops.getattr) {
-		throw new ErrnoError(ERRNO_CODES.EPERM);
+		throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 	}
 
 	return node.node_ops.getattr(node);
@@ -387,17 +381,17 @@ const mknod = (path, mode, dev) => {
 	const name 	 				 = PATH.basename(path);
 
 	if (!name || name === '.' || name === '..') {
-		throw new ErrnoError(ERRNO_CODES.EINVAL);
+		throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 	}
 
 	const error = mayCreate(parent, name);
 
 	if (error) {
-		throw new ErrnoError(error);
+		throw new utils.ErrnoError(error);
 	}
 
 	if (!parent.node_ops.mknod) {
-		throw new ErrnoError(ERRNO_CODES.EPERM);
+		throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 	}
 
 	return parent.node_ops.mknod(parent, name, mode, dev);
@@ -430,7 +424,7 @@ const mayOpen = (node, flags) => {
 
 const truncate = (path, len) => {
 	if (len < 0) {
-		throw new ErrnoError(ERRNO_CODES.EINVAL);
+		throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 	}
 
 	let node;
@@ -445,21 +439,21 @@ const truncate = (path, len) => {
 	}
 
 	if (!node.node_ops.setattr) {
-		throw new ErrnoError(ERRNO_CODES.EPERM);
+		throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 	}
 
 	if (isDir(node.mode)) {
-		throw new ErrnoError(ERRNO_CODES.EISDIR);
+		throw new utils.ErrnoError(ERRNO_CODES.EISDIR);
 	}
 
 	if (!isFile(node.mode)) {
-		throw new ErrnoError(ERRNO_CODES.EINVAL);
+		throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 	}
 
 	const error = nodePermissions(node, 'w');
 
 	if (error) {
-		throw new ErrnoError(error);
+		throw new utils.ErrnoError(error);
 	}
 
 	node.node_ops.setattr(node, {size: len, timestamp: Date.now()});
@@ -475,7 +469,7 @@ const nextfd = (fd_start, fd_end) => {
 		}
 	}
 
-	throw new ErrnoError(ERRNO_CODES.EMFILE);
+	throw new utils.ErrnoError(ERRNO_CODES.EMFILE);
 };
 
 
@@ -527,7 +521,7 @@ const createStream = (stream, fd_start, fd_end) => {
 
 const open = (path, flags, mode, fd_start, fd_end) => {
 	if (path === '') {
-		throw new ErrnoError(ERRNO_CODES.ENOENT);
+		throw new utils.ErrnoError(ERRNO_CODES.ENOENT);
 	}
 
 	flags = typeof flags === 'string' ? modeStringToFlags(flags) : flags;
@@ -561,7 +555,7 @@ const open = (path, flags, mode, fd_start, fd_end) => {
 	if (flags & 64) {
 		if (node) {
 			if (flags & 128) {
-				throw new ErrnoError(ERRNO_CODES.EEXIST);
+				throw new utils.ErrnoError(ERRNO_CODES.EEXIST);
 			}
 		}
 		else {
@@ -571,7 +565,7 @@ const open = (path, flags, mode, fd_start, fd_end) => {
 	}
 
 	if (!node) {
-		throw new ErrnoError(ERRNO_CODES.ENOENT);
+		throw new utils.ErrnoError(ERRNO_CODES.ENOENT);
 	}
 
 	if (isChrdev(node.mode)) {
@@ -579,14 +573,14 @@ const open = (path, flags, mode, fd_start, fd_end) => {
 	}
 
 	if (flags & 65536 && !isDir(node.mode)) {
-		throw new ErrnoError(ERRNO_CODES.ENOTDIR);
+		throw new utils.ErrnoError(ERRNO_CODES.ENOTDIR);
 	}
 
 	if (!created) {
 		const error = mayOpen(node, flags);
 
 		if (error) {
-			throw new ErrnoError(error);
+			throw new utils.ErrnoError(error);
 		}
 	}
 
@@ -639,11 +633,11 @@ const open = (path, flags, mode, fd_start, fd_end) => {
 
 const llseek = (stream, offset, whence) => {
 	if (isClosed(stream)) {
-		throw new ErrnoError(ERRNO_CODES.EBADF);
+		throw new utils.ErrnoError(ERRNO_CODES.EBADF);
 	}
 
 	if (!stream.seekable || !stream.stream_ops.llseek) {
-		throw new ErrnoError(ERRNO_CODES.ESPIPE);
+		throw new utils.ErrnoError(ERRNO_CODES.ESPIPE);
 	}
 
 	stream.position = stream.stream_ops.llseek(stream, offset, whence);
@@ -654,23 +648,23 @@ const llseek = (stream, offset, whence) => {
 
 const write = (stream, buffer, offset, length, position, canOwn) => {
 	if (length < 0 || position < 0) {
-		throw new ErrnoError(ERRNO_CODES.EINVAL);
+		throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 	}
 
 	if (isClosed(stream)) {
-		throw new ErrnoError(ERRNO_CODES.EBADF);
+		throw new utils.ErrnoError(ERRNO_CODES.EBADF);
 	}
 
 	if ((stream.flags & 2097155) === 0) {
-		throw new ErrnoError(ERRNO_CODES.EBADF);
+		throw new utils.ErrnoError(ERRNO_CODES.EBADF);
 	}
 
 	if (isDir(stream.node.mode)) {
-		throw new ErrnoError(ERRNO_CODES.EISDIR);
+		throw new utils.ErrnoError(ERRNO_CODES.EISDIR);
 	}
 
 	if (!stream.stream_ops.write) {
-		throw new ErrnoError(ERRNO_CODES.EINVAL);
+		throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 	}
 
 	if (stream.flags & 1024) {
@@ -683,7 +677,7 @@ const write = (stream, buffer, offset, length, position, canOwn) => {
 		position = stream.position;
 	}
 	else if (!stream.seekable) {
-		throw new ErrnoError(ERRNO_CODES.ESPIPE);
+		throw new utils.ErrnoError(ERRNO_CODES.ESPIPE);
 	}
 
 	const bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
@@ -710,7 +704,7 @@ const closeStream = fd => {
 
 const close = stream => {
 	if (isClosed(stream)) {
-		throw new ErrnoError(ERRNO_CODES.EBADF);
+		throw new utils.ErrnoError(ERRNO_CODES.EBADF);
 	}
 
 	if (stream.getdents) {
@@ -738,8 +732,8 @@ const writeFile = (path, data, opts = {}) => {
 	const stream = open(path, flags, mode);
 
 	if (typeof data === 'string') {
-		const buf 					 = new Uint8Array(lengthBytesUTF8(data) + 1);
-		const actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
+		const buf 					 = new Uint8Array(utils.lengthBytesUTF8(data) + 1);
+		const actualNumBytes = utils.stringToUTF8Array(data, buf, 0, buf.length);
 
 		write(stream, buf, 0, actualNumBytes, undefined, canOwn);
 	}
@@ -766,7 +760,7 @@ const chmod = (path, mode, dontFollow) => {
 	}
 
 	if (!node.node_ops.setattr) {
-		throw new ErrnoError(ERRNO_CODES.EPERM);
+		throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 	}
 
 	node.node_ops.setattr(node, {
@@ -844,15 +838,15 @@ const rmdir = path => {
 	const error 	 			 = mayDelete(parent, name, true);
 
 	if (error) {
-		throw new ErrnoError(error);
+		throw new utils.ErrnoError(error);
 	}
 
 	if (!parent.node_ops.rmdir) {
-		throw new ErrnoError(ERRNO_CODES.EPERM);
+		throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 	}
 
 	if (isMountpoint(node)) {
-		throw new ErrnoError(ERRNO_CODES.EBUSY);
+		throw new utils.ErrnoError(ERRNO_CODES.EBUSY);
 	}
 
 	try {
@@ -884,15 +878,15 @@ const unlink = path => {
 	const error 	 			 = mayDelete(parent, name, false);
 
 	if (error) {
-		throw new ErrnoError(error);
+		throw new utils.ErrnoError(error);
 	}
 
 	if (!parent.node_ops.unlink) {
-		throw new ErrnoError(ERRNO_CODES.EPERM);
+		throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 	}
 
 	if (isMountpoint(node)) {
-		throw new ErrnoError(ERRNO_CODES.EBUSY);
+		throw new utils.ErrnoError(ERRNO_CODES.EBUSY);
 	}
 
 	try {
@@ -919,7 +913,7 @@ const unlink = path => {
 };
 
 
-export {
+export default {
 	MAX_OPEN_FDS,
 	chmod,
 	chrdev_stream_ops,

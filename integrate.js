@@ -7,27 +7,11 @@ import {
 	WASM_PAGE_SIZE
 } from './constants.js';
 
-import {
-	abort,
-	alignUp,
-	assert,
-	err
-} from './utils.js';
+import utils 	 from './utils.js';
+import memory  from './memory.js';
+import runtime from './runtime.js';
 
-import {
-	Module,
-	scriptDirectory
-} from './module.js';
-
-import {
-	updateGlobalBuffer,
-	updateGlobalBufferViews
-} from './memory.js';
-
-import {
-	addRunDependency,
-	removeRunDependency
-} from './runtime.js';
+import {Module, scriptDirectory} from './module.js';
 
 
 const dataURIPrefix = 'data:application/octet-stream;base64,';
@@ -50,15 +34,15 @@ const mergeMemory = newBuffer => {
 	const oldBuffer = Module['buffer'];
 
 	if (newBuffer.byteLength < oldBuffer.byteLength) {
-		err('the new buffer in mergeMemory is smaller than the previous one. in native wasm, we should grow memory here');
+		utils.err('the new buffer in mergeMemory is smaller than the previous one. in native wasm, we should grow memory here');
 	}
 
 	const oldView = new Int8Array(oldBuffer);
 	const newView = new Int8Array(newBuffer);
 
 	newView.set(oldView);
-	updateGlobalBuffer(newBuffer);
-	updateGlobalBufferViews();
+	memory.updateGlobalBuffer(newBuffer);
+	memory.updateGlobalBufferViews();
 };
 
 const receiveInstance = instance => {
@@ -71,7 +55,7 @@ const receiveInstance = instance => {
 	Module['asm'] 			= exported;
 	Module['usingWasm'] = true;
 
-	removeRunDependency('wasm-instantiate');
+	runtime.removeRunDependency('wasm-instantiate');
 };
 
 const receiveInstantiatedSource = output => {
@@ -83,7 +67,7 @@ const wasmReallocBuffer = size => {
 	const old 					= Module['buffer'];
 	const oldSize 			= old.byteLength;
 
-	size = alignUp(size, PAGE_MULTIPLE);		
+	size = utils.alignUp(size, PAGE_MULTIPLE);		
 
 	if (Module['usingWasm']) {
 		try {
@@ -156,7 +140,7 @@ const integrateWasmJS = () => {
 			}
 		}
 		catch (error) {
-			abort(error);
+			utils.abort(error);
 		}
 	};
 
@@ -189,13 +173,13 @@ const integrateWasmJS = () => {
 	const doNativeWasm = async (global, env, providedBuffer) => {
 
 		if (typeof WebAssembly !== 'object') {
-			err('no native wasm support detected');
+			utils.err('no native wasm support detected');
 
 			return false;
 		}
 
 		if (!(Module['wasmMemory'] instanceof WebAssembly.Memory)) {
-			err('no native wasm Memory in use');
+			utils.err('no native wasm Memory in use');
 
 			return false;
 		}
@@ -205,14 +189,14 @@ const integrateWasmJS = () => {
 		info['global.Math'] = Math;
 		info['env'] 				= env;		
 
-		addRunDependency('wasm-instantiate');
+		runtime.addRunDependency('wasm-instantiate');
 
 		if (Module['instantiateWasm']) {
 			try {
 				return Module['instantiateWasm'](info, receiveInstance);
 			}
-			catch (e) {
-				err('Module.instantiateWasm callback failed with error: ' + e);
+			catch (error) {
+				utils.err(`Module.instantiateWasm callback failed with error: ${error}`);
 
 				return false;
 			}
@@ -226,8 +210,8 @@ const integrateWasmJS = () => {
 				receiver(output);
 			}
 			catch (error) {
-				err(`failed to asynchronously prepare wasm: ${error}`);
-				abort(error);
+				utils.err(`failed to asynchronously prepare wasm: ${error}`);
+				utils.abort(error);
 			}
 		};
 
@@ -247,8 +231,8 @@ const integrateWasmJS = () => {
 				receiveInstantiatedSource(output);
 			}
 			catch (error) {
-				err(`wasm streaming compile failed: ${reason}`);
-				err('falling back to ArrayBuffer instantiation');
+				utils.err(`wasm streaming compile failed: ${reason}`);
+				utils.err('falling back to ArrayBuffer instantiation');
 				instantiateArrayBuffer(receiveInstantiatedSource);
 			}
 		}
@@ -308,7 +292,7 @@ const integrateWasmJS = () => {
 
 		const exported = doNativeWasm(global, env, providedBuffer);
 
-		assert(exported, 'no binaryen method succeeded.');
+		utils.assert(exported, 'no binaryen method succeeded.');
 
 		return exported;
 	};

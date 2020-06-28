@@ -1,21 +1,9 @@
 
 
-import {ERRNO_CODES} 				from './constants.js';
-import {ErrnoError, assert} from './utils.js';
-import {_malloc} 						from './memory.js';
-
-import {
-	chrdev_stream_ops,
-	createNode,
-	genericErrors,
-	isBlkdev,
-	isChrdev,
-	isDir,
-	isFIFO,
-	isFile,
-	isLink,
-	lookupNode
-} from './fs-shared.js';
+import {ERRNO_CODES} from './constants.js';
+import utils 				 from './utils.js';
+import memory 			 from './memory.js';
+import fsShared 		 from './fs-shared.js';
 
 
 const MEMFS = {
@@ -25,8 +13,8 @@ const MEMFS = {
 
 	createNode(parent, name, mode, dev) {
 
-		if (isBlkdev(mode) || isFIFO(mode)) {
-			throw new ErrnoError(ERRNO_CODES.EPERM);
+		if (fsShared.isBlkdev(mode) || fsShared.isFIFO(mode)) {
+			throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 		}
 
 		if (!MEMFS.ops_table) {
@@ -74,29 +62,29 @@ const MEMFS = {
 						getattr: MEMFS.node_ops.getattr,
 						setattr: MEMFS.node_ops.setattr
 					},
-					stream: chrdev_stream_ops
+					stream: fsShared.chrdev_stream_ops
 				}
 			};
 		}
 
-		const node = createNode(parent, name, mode, dev);
+		const node = fsShared.createNode(parent, name, mode, dev);
 
-		if (isDir(node.mode)) {
+		if (fsShared.isDir(node.mode)) {
 			node.node_ops 	= MEMFS.ops_table.dir.node;
 			node.stream_ops = MEMFS.ops_table.dir.stream;
 			node.contents 	= {};
 		}
-		else if (isFile(node.mode)) {
+		else if (fsShared.isFile(node.mode)) {
 			node.node_ops 	= MEMFS.ops_table.file.node;
 			node.stream_ops = MEMFS.ops_table.file.stream;
 			node.usedBytes 	= 0;
 			node.contents 	= null;
 		}
-		else if (isLink(node.mode)) {
+		else if (fsShared.isLink(node.mode)) {
 			node.node_ops 	= MEMFS.ops_table.link.node;
 			node.stream_ops = MEMFS.ops_table.link.stream;
 		}
-		else if (isChrdev(node.mode)) {
+		else if (fsShared.isChrdev(node.mode)) {
 			node.node_ops 	= MEMFS.ops_table.chrdev.node;
 			node.stream_ops = MEMFS.ops_table.chrdev.stream;
 		}
@@ -225,7 +213,7 @@ const MEMFS = {
 			const {id, link, mode, rdev, timestamp, usedBytes} = node;
 			const attr = {};
 
-			attr.dev 	 = isChrdev(mode) ? id : 1;
+			attr.dev 	 = fsShared.isChrdev(mode) ? id : 1;
 			attr.ino 	 = id;
 			attr.mode  = mode;
 			attr.nlink = 1;
@@ -233,13 +221,13 @@ const MEMFS = {
 			attr.gid 	 = 0;
 			attr.rdev  = rdev;
 
-			if (isDir(mode)) {
+			if (fsShared.isDir(mode)) {
 				attr.size = 4096;
 			}
-			else if (isFile(mode)) {
+			else if (fsShared.isFile(mode)) {
 				attr.size = usedBytes;
 			}
-			else if (isLink(mode)) {
+			else if (fsShared.isLink(mode)) {
 				attr.size = link.length;
 			}
 			else {
@@ -272,23 +260,23 @@ const MEMFS = {
 		},
 
 		lookup(parent, name) {
-			throw genericErrors[ERRNO_CODES.ENOENT];
+			throw fsShared.genericErrors[ERRNO_CODES.ENOENT];
 		},
 
 		mknod: (parent, name, mode, dev) => MEMFS.createNode(parent, name, mode, dev),
 
 		rename(old_node, new_dir, new_name) {
-			if (isDir(old_node.mode)) {
+			if (fsShared.isDir(old_node.mode)) {
 				let new_node;
 
 				try {
-					new_node = lookupNode(new_dir, new_name);
+					new_node = fsShared.lookupNode(new_dir, new_name);
 				}
 				catch (_) {}
 
 				if (new_node) {
 					for (const i in new_node.contents) {
-						throw new ErrnoError(ERRNO_CODES.ENOTEMPTY);
+						throw new utils.ErrnoError(ERRNO_CODES.ENOTEMPTY);
 					}
 				}
 			}
@@ -305,10 +293,10 @@ const MEMFS = {
 		},
 
 		rmdir(parent, name) {
-			const node = lookupNode(parent, name);
+			const node = fsShared.lookupNode(parent, name);
 
 			for (const i in node.contents) {
-				throw new ErrnoError(ERRNO_CODES.ENOTEMPTY);
+				throw new utils.ErrnoError(ERRNO_CODES.ENOTEMPTY);
 			}
 
 			delete parent.contents[name];
@@ -337,8 +325,8 @@ const MEMFS = {
 		},
 
 		readlink(node) {
-			if (!isLink(node.mode)) {
-				throw new ErrnoError(ERRNO_CODES.EINVAL);
+			if (!fsShared.isLink(node.mode)) {
+				throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 			}
 
 			return node.link;
@@ -353,7 +341,7 @@ const MEMFS = {
 
 			const size = Math.min(usedBytes - position, length);
 
-			assert(size >= 0);
+			utils.assert(size >= 0);
 
 			if (size > 8 && contents.subarray) {
 				buffer.set(contents.subarray(position, position + size), offset);
@@ -417,13 +405,13 @@ const MEMFS = {
 				position += stream.position;
 			}
 			else if (whence === 2) {
-				if (isFile(stream.node.mode)) {
+				if (fsShared.isFile(stream.node.mode)) {
 					position += stream.node.usedBytes;
 				}
 			}
 
 			if (position < 0) {
-				throw new ErrnoError(ERRNO_CODES.EINVAL);
+				throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 			}
 
 			return position;
@@ -435,8 +423,8 @@ const MEMFS = {
 		},
 
 		mmap(stream, buffer, offset, length, position, prot, flags) {
-			if (!isFile(stream.node.mode)) {
-				throw new ErrnoError(ERRNO_CODES.ENODEV);
+			if (!fsShared.isFile(stream.node.mode)) {
+				throw new utils.ErrnoError(ERRNO_CODES.ENODEV);
 			}
 
 			let ptr;
@@ -458,10 +446,10 @@ const MEMFS = {
 				}
 
 				allocated = true;
-				ptr 			= _malloc(length);
+				ptr 			= memory._malloc(length);
 
 				if (!ptr) {
-					throw new ErrnoError(ERRNO_CODES.ENOMEM);
+					throw new utils.ErrnoError(ERRNO_CODES.ENOMEM);
 				}
 
 				buffer.set(contents, ptr);
@@ -471,8 +459,8 @@ const MEMFS = {
 		},
 
 		msync(stream, buffer, offset, length, mmapFlags) {
-			if (!isFile(stream.node.mode)) {
-				throw new ErrnoError(ERRNO_CODES.ENODEV);
+			if (!fsShared.isFile(stream.node.mode)) {
+				throw new utils.ErrnoError(ERRNO_CODES.ENODEV);
 			}
 
 			if (mmapFlags & 2) {

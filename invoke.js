@@ -414,7 +414,7 @@ const invoke_vij = (index, a1, a2, a3) => {
 };
 
 
-export {
+export default {
 	stackRestore,
 	stackSave,
 	invoke_dii,

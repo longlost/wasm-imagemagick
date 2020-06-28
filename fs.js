@@ -1,93 +1,17 @@
 
 import {ERRNO_CODES} from './constants.js';
-
-import {
-	ErrnoError,
-	assert,
-	getDevice,
-	intArrayFromString,
-	registerDevice,
-	stringToUTF8Array,
-	UTF8ArrayToString
-} from './utils.js';
-
-import {Module} from './module.js';
-
-import {
-	addRunDependency,
-	removeRunDependency
-} from './runtime.js';
-
-import {___setErrNo} from './environment.js';
-
-import {
-	MAX_OPEN_FDS,
-	chmod,
-	chrdev_stream_ops,
-	close,
-	closeStream,
-	createNode,
-	createStream,
-	currentPath,
-	cwd,
-	destroyNode,
-	flagModes,
-	flagsToPermissionString,
-	genericErrors,
-	getPath,
-	hashName,
-	hashAddNode,
-	hashRemoveNode,
-	ignorePermissions,
-	isBlkdev,
-	isChrdev,
-	isClosed,
-	isDir,
-	isFIFO,
-	isFile,
-	isLink,
-	isMountpoint,
-	isRoot,
-	llseek,
-	lookup,
-	lookupNode,
-	lookupPath,
-	mayCreate,
-	mayDelete,
-	mayLookup,
-	mayOpen,
-	mkdir,
-	mknod,
-	modeStringToFlags,
-	nameTable,
-	nextfd,
-	nextInode,
-	nodePermissions,
-	open,
-	readdir,
-	readlink,
-	rmdir,
-	root,
-	stat,
-	streams,
-	tracking,
-	trackingDelegate,
-	truncate,
-	unlink,
-	utime,
-	write,
-	writeFile
-} from './fs-shared.js';
-
-import PATH  		from './path.js';
-import TTY 	 		from './tty.js';
-import MEMFS 		from './memfs.js';
-import IDBFS 		from './idbfs.js';
-import NODEFS 	from './nodefs.js';
-import WORKERFS from './workerfs.js';
-
-
-window = window || self;
+import utils 			 	 from './utils.js';
+import {Module} 	 	 from './module.js';
+import runtime 		 	 from './runtime.js';
+import environment 	 from './environment.js';
+import fsShared 	 	 from './fs-shared.js';
+import PATH  			 	 from './path.js';
+import TTY 	 			 	 from './tty.js';
+import MEMFS 			 	 from './memfs.js';
+import IDBFS 			 	 from './idbfs.js';
+import NODEFS 		 	 from './nodefs.js';
+import WORKERFS 	 	 from './workerfs.js';
+import '@ungap/global-this';
 
 
 const demangle = func => func;
@@ -129,76 +53,76 @@ const stackTrace = () => {
 
 
 const FS = {
-	root,
-	mounts: [],
-	streams,
-	nextInode,
-	nameTable,
-	currentPath,
-	initialized: false,
-	ignorePermissions,
-	trackingDelegate,
-	tracking,
-	ErrnoError,
-	genericErrors,
-	filesystems: null,
-	syncFSRequests: 0,
-	lookupPath,
-	getPath,
-	hashName,
-	hashAddNode,
-	hashRemoveNode,
-	lookupNode,
-	createStream,
-	closeStream,
-	chrdev_stream_ops,
-	createNode,
-	destroyNode,
-	isRoot,
-	isMountpoint,
-	isFile,
-	isDir,
-	isLink,
-	isChrdev,
-	isBlkdev,
-	isFIFO,
-	flagModes,
-	modeStringToFlags,
-	flagsToPermissionString,
-	nodePermissions,
-	mayLookup,
-	mayCreate,
-	mayDelete,
-	mayOpen,
-	MAX_OPEN_FDS,
-	nextfd,
-	registerDevice,
-	getDevice,
-	lookup,
-	mknod,
-	mkdir,
-	rmdir,
-	readdir,
-	unlink,
-	readlink,
-	stat,
-	chmod,
-	truncate,
-	utime,
-	open,
-	close,
-	isClosed,
-	llseek,
-	write,
-	writeFile,
-	cwd,
+	root: 									 fsShared.root,
+	mounts: 								 [],
+	streams: 								 fsShared.streams,
+	nextInode: 							 fsShared.nextInode,
+	nameTable: 							 fsShared.nameTable,
+	currentPath: 						 fsShared.currentPath,
+	initialized: 						 false,
+	ignorePermissions: 			 fsShared.ignorePermissions,
+	trackingDelegate: 			 fsShared.trackingDelegate,
+	tracking: 							 fsShared.tracking,
+	ErrnoError: 						 utils.ErrnoError,
+	genericErrors: 					 fsShared.genericErrors,
+	filesystems: 						 null,
+	syncFSRequests: 				 0,
+	lookupPath: 						 fsShared.lookupPath,
+	getPath: 								 fsShared.getPath,
+	hashName: 							 fsShared.hashName,
+	hashAddNode: 						 fsShared.hashAddNode,
+	hashRemoveNode: 				 fsShared.hashRemoveNode,
+	lookupNode: 						 fsShared.lookupNode,
+	createStream: 					 fsShared.createStream,
+	closeStream: 						 fsShared.closeStream,
+	chrdev_stream_ops: 			 fsShared.chrdev_stream_ops,
+	createNode: 						 fsShared.createNode,
+	destroyNode: 						 fsShared.destroyNode,
+	isRoot: 								 fsShared.isRoot,
+	isMountpoint: 					 fsShared.isMountpoint,
+	isFile: 								 fsShared.isFile,
+	isDir: 									 fsShared.isDir,
+	isLink: 								 fsShared.isLink,
+	isChrdev: 							 fsShared.isChrdev,
+	isBlkdev: 							 fsShared.isBlkdev,
+	isFIFO: 								 fsShared.isFIFO,
+	flagModes: 							 fsShared.flagModes,
+	modeStringToFlags: 			 fsShared.modeStringToFlags,
+	flagsToPermissionString: fsShared.flagsToPermissionString,
+	nodePermissions: 				 fsShared.nodePermissions,
+	mayLookup: 							 fsShared.mayLookup,
+	mayCreate: 							 fsShared.mayCreate,
+	mayDelete: 							 fsShared.mayDelete,
+	mayOpen: 								 fsShared.mayOpen,
+	MAX_OPEN_FDS: 					 fsShared.MAX_OPEN_FDS,
+	nextfd: 								 fsShared.nextfd,
+	registerDevice: 				 utils.registerDevice,
+	getDevice: 							 utils.getDevice,
+	lookup: 								 fsShared.lookup,
+	mknod: 									 fsShared.mknod,
+	mkdir: 									 fsShared.mkdir,
+	rmdir: 									 fsShared.rmdir,
+	readdir: 								 fsShared.readdir,
+	unlink: 								 fsShared.unlink,
+	readlink: 							 fsShared.readlink,
+	stat: 									 fsShared.stat,
+	chmod: 									 fsShared.chmod,
+	truncate: 							 fsShared.truncate,
+	utime: 									 fsShared.utime,
+	open: 									 fsShared.open,
+	close: 									 fsShared.close,
+	isClosed: 							 fsShared.isClosed,
+	llseek: 								 fsShared.llseek,
+	write: 									 fsShared.write,
+	writeFile: 							 fsShared.writeFile,
+	cwd: 										 fsShared.cwd,
 
 	handleFSError(error) {
 		if (!(error instanceof FS.ErrnoError)) { 
 			throw `${error} : ${stackTrace()}`;
 		}
 
-		return ___setErrNo(e.errno);
+		return environment.___setErrNo(e.errno);
 	},	
 
 	isSocket: mode => (mode & 49152) === 49152,	
@@ -241,7 +165,7 @@ const FS = {
 		let completed = 0;
 
 		const doCallback = err => {
-			assert(FS.syncFSRequests > 0);
+			utils.assert(FS.syncFSRequests > 0);
 
 			FS.syncFSRequests--;
 
@@ -311,7 +235,7 @@ const FS = {
 		mount.root 			= mountRoot;
 
 		if (isRoot) {
-			FS.root = mountRoot;
+			FS.root = fsShared.root = mountRoot;
 		}
 		else if (node) {
 			node.mounted = mount;
@@ -352,7 +276,7 @@ const FS = {
 
 		const index = node.mount.mounts.indexOf(mount);
 
-		assert(index !== -1);
+		utils.assert(index !== -1);
 
 		node.mount.mounts.splice(index, 1);
 	},
@@ -700,7 +624,7 @@ const FS = {
 		FS.read(stream, buf, 0, length, 0);
 
 		if (encoding === 'utf8') {
-			ret = UTF8ArrayToString(buf, 0);
+			ret = utils.UTF8ArrayToString(buf, 0);
 		}
 		else if (encoding === 'binary') {
 			ret = buf;
@@ -728,7 +652,7 @@ const FS = {
 			throw new FS.ErrnoError(error);
 		}
 
-		currentPath = lookup.path;
+		FS.currentPath = fsShared.currentPath = lookup.path;
 	},
 
 	createDefaultDirectories() {
@@ -839,15 +763,15 @@ const FS = {
 
 		const stdin = FS.open('/dev/stdin', 'r');
 
-		assert(stdin.fd === 0, `invalid handle for stdin ('${stdin.fd}')`);
+		utils.assert(stdin.fd === 0, `invalid handle for stdin ('${stdin.fd}')`);
 
 		const stdout = FS.open('/dev/stdout', 'w');
 
-		assert(stdout.fd === 1, `invalid handle for stdout ('${stdout.fd}')`);
+		utils.assert(stdout.fd === 1, `invalid handle for stdout ('${stdout.fd}')`);
 
 		const stderr = FS.open('/dev/stderr', 'w');
 
-		assert(stderr.fd === 2, `invalid handle for stderr ('${stderr.fd}')`);
+		utils.assert(stderr.fd === 2, `invalid handle for stderr ('${stderr.fd}')`);
 	},
 
 	staticInit() {
@@ -864,7 +788,7 @@ const FS = {
 	},
 
 	init(input, output, error) {
-		assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
+		utils.assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 
 		FS.init.initialized = true;
 		Module['stdin']  = input  || Module['stdin'];
@@ -918,7 +842,7 @@ const FS = {
 			return object;
 		}
 		else {
-			___setErrNo(error);
+			environment.___setErrNo(error);
 
 			return null;
 		}
@@ -1132,7 +1056,7 @@ const FS = {
 		}
 		else if (Module['read']) {
 			try {
-				obj.contents  = intArrayFromString(Module['read'](obj.url), true);
+				obj.contents  = utils.intArrayFromString(Module['read'](obj.url), true);
 				obj.usedBytes = obj.contents.length;
 			}
 			catch (_) {
@@ -1144,7 +1068,7 @@ const FS = {
 		}
 
 		if (!success) {
-			___setErrNo(ERRNO_CODES.EIO);
+			environment.___setErrNo(ERRNO_CODES.EIO);
 		}
 
 		return success;
@@ -1227,7 +1151,7 @@ const FS = {
 					return new Uint8Array(xhr.response || []);
 				}
 				else {
-					return intArrayFromString(xhr.responseText || '', true);
+					return utils.intArrayFromString(xhr.responseText || '', true);
 				}
 			};
 
@@ -1346,7 +1270,7 @@ const FS = {
 
 			const size = Math.min(contents.length - position, length);
 
-			assert(size >= 0);
+			utils.assert(size >= 0);
 
 			if (contents.slice) {
 				for (let i = 0; i < size; i++) {
@@ -1389,7 +1313,7 @@ const FS = {
 					onload();
 				}
 
-				removeRunDependency(dep);
+				runtime.removeRunDependency(dep);
 			};
 
 			let handled = false;
@@ -1403,7 +1327,7 @@ const FS = {
 							onerror();
 						}
 
-						removeRunDependency(dep);
+						runtime.removeRunDependency(dep);
 					});
 
 					handled = true;
@@ -1415,7 +1339,7 @@ const FS = {
 			}
 		};
 
-		addRunDependency(dep);
+		runtime.addRunDependency(dep);
 
 		if (typeof url === 'string') {
 			Browser.asyncLoad(
@@ -1429,9 +1353,9 @@ const FS = {
 		}
 	},
 
-	indexedDB: () => window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB,
+	indexedDB: () => globalThis.indexedDB || globalThis.mozIndexedDB || globalThis.webkitIndexedDB || globalThis.msIndexedDB,
 
-	DB_NAME: () => `EM_FS_${window.location.pathname}`,
+	DB_NAME: () => `EM_FS_${globalThis.location.pathname}`,
 
 	DB_VERSION: 		20,
 	DB_STORE_NAME: 'FILE_DATA',

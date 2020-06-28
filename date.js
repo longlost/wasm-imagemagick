@@ -1,7 +1,8 @@
 
 
-import {intArrayFromString} 			 										 from './utils.js';
-import {HEAP32, Pointer_stringify, writeArrayToMemory} from './memory.js';
+import utils 	from './utils.js';
+import memory from './memory.js';
+
 
 const MONTH_DAYS_LEAP 	 = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const MONTH_DAYS_REGULAR = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -327,23 +328,23 @@ const EXPANSION_RULES_2 = {
 
 
 const _strftime = (s, maxsize, format, tm) => {
-	const tm_zone = HEAP32[tm + 40 >> 2];
+	const tm_zone = memory.HEAP32[tm + 40 >> 2];
 
 	const date = {
-		tm_sec: 	 HEAP32[tm >> 2], 
-		tm_min: 	 HEAP32[tm + 4 >> 2],
-		tm_hour: 	 HEAP32[tm + 8 >> 2],
-		tm_mday: 	 HEAP32[tm + 12 >> 2],
-		tm_mon: 	 HEAP32[tm + 16 >> 2],
-		tm_year: 	 HEAP32[tm + 20 >> 2],
-		tm_wday: 	 HEAP32[tm + 24 >> 2],
-		tm_yday: 	 HEAP32[tm + 28 >> 2],
-		tm_isdst:  HEAP32[tm + 32 >> 2],
-		tm_gmtoff: HEAP32[tm + 36 >> 2],
-		tm_zone: 	 tm_zone ? Pointer_stringify(tm_zone) : ''
+		tm_sec: 	 memory.HEAP32[tm >> 2], 
+		tm_min: 	 memory.HEAP32[tm + 4 >> 2],
+		tm_hour: 	 memory.HEAP32[tm + 8 >> 2],
+		tm_mday: 	 memory.HEAP32[tm + 12 >> 2],
+		tm_mon: 	 memory.HEAP32[tm + 16 >> 2],
+		tm_year: 	 memory.HEAP32[tm + 20 >> 2],
+		tm_wday: 	 memory.HEAP32[tm + 24 >> 2],
+		tm_yday: 	 memory.HEAP32[tm + 28 >> 2],
+		tm_isdst:  memory.HEAP32[tm + 32 >> 2],
+		tm_gmtoff: memory.HEAP32[tm + 36 >> 2],
+		tm_zone: 	 tm_zone ? memory.Pointer_stringify(tm_zone) : ''
 	};
 
-	let pattern = Pointer_stringify(format);	
+	let pattern = memory.Pointer_stringify(format);	
 
 	for (const rule in EXPANSION_RULES_1) {
 		pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);
@@ -355,18 +356,18 @@ const _strftime = (s, maxsize, format, tm) => {
 		}
 	}
 
-	const bytes = intArrayFromString(pattern, false);
+	const bytes = utils.intArrayFromString(pattern, false);
 
 	if (bytes.length > maxsize) {
 		return 0;
 	}
 
-	writeArrayToMemory(bytes, s);
+	memory.writeArrayToMemory(bytes, s);
 
 	return bytes.length - 1;
 };
 
 
-export {
+export default {
 	_strftime
 };

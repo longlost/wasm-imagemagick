@@ -1,8 +1,9 @@
 
 
 import {ENVIRONMENT_IS_WORKER, ERRNO_CODES} from './constants.js';
-import {ErrnoError, assert} 								from './utils.js';
-import {createNode, isFile}									from './fs-shared.js';
+
+import utils 		from './utils.js';
+import fsShared	from './fs-shared.js';
 
 
 const base = path => {
@@ -18,7 +19,7 @@ const WORKERFS = {
 	reader: 	 null,
 
 	mount({opts}) {
-		assert(ENVIRONMENT_IS_WORKER);
+		utils.assert(ENVIRONMENT_IS_WORKER);
 
 		if (!WORKERFS.reader) { 
 			WORKERFS.reader = new FileReaderSync; 
@@ -84,14 +85,14 @@ const WORKERFS = {
 	},
 
 	createNode(parent, name, mode, dev, contents, mtime) {
-		const node = createNode(parent, name, mode);
+		const node = fsShared.createNode(parent, name, mode);
 
 		node.mode 			= mode;
 		node.node_ops 	= WORKERFS.node_ops;
 		node.stream_ops = WORKERFS.stream_ops;
 		node.timestamp 	= (mtime || new Date).getTime();
 
-		assert(WORKERFS.FILE_MODE !== WORKERFS.DIR_MODE);
+		utils.assert(WORKERFS.FILE_MODE !== WORKERFS.DIR_MODE);
 
 		if (mode === WORKERFS.FILE_MODE) {
 			node.size 		= contents.size;
@@ -139,23 +140,23 @@ const WORKERFS = {
 		},
 
 		lookup(parent, name) {
-			throw new ErrnoError(ERRNO_CODES.ENOENT);
+			throw new utils.ErrnoError(ERRNO_CODES.ENOENT);
 		},
 
 		mknod(parent, name, mode, dev) {
-			throw new ErrnoError(ERRNO_CODES.EPERM);
+			throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 		},
 
 		rename(oldNode, newDir, newName) {
-			throw new ErrnoError(ERRNO_CODES.EPERM);
+			throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 		},
 
 		unlink(parent, name) {
-			throw new ErrnoError(ERRNO_CODES.EPERM);
+			throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 		},
 
 		rmdir(parent, name) {
-			throw new ErrnoError(ERRNO_CODES.EPERM);
+			throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 		},
 
 		readdir(node) {
@@ -173,11 +174,11 @@ const WORKERFS = {
 		},
 
 		symlink(parent, newName, oldPath) {
-			throw new ErrnoError(ERRNO_CODES.EPERM);
+			throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 		},
 
 		readlink(node) {
-			throw new ErrnoError(ERRNO_CODES.EPERM);
+			throw new utils.ErrnoError(ERRNO_CODES.EPERM);
 		}
 	},
 
@@ -194,7 +195,7 @@ const WORKERFS = {
 		},
 
 		write() {
-			throw new ErrnoError(ERRNO_CODES.EIO);
+			throw new utils.ErrnoError(ERRNO_CODES.EIO);
 		},
 
 		llseek(stream, offset, whence) {
@@ -204,13 +205,13 @@ const WORKERFS = {
 				position += stream.position;
 			}
 			else if (whence === 2) {
-				if (isFile(stream.node.mode)) {
+				if (fsShared.isFile(stream.node.mode)) {
 					position += stream.node.size;
 				}
 			}
 
 			if (position < 0) {
-				throw new ErrnoError(ERRNO_CODES.EINVAL);
+				throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 			}
 
 			return position;

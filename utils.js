@@ -39,7 +39,6 @@ ErrnoError.prototype.constructor = ErrnoError;
 
 
 const out = console.log.bind(console);
-
 const err = console.warn.bind(console);
 
 
@@ -286,7 +285,7 @@ const UTF8ArrayToString = (u8Array, idx) => {
 };
 
 
-export {
+export default {
 	_free,
 	_memset,
 	ABORT,

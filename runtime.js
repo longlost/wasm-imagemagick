@@ -1,5 +1,5 @@
 
-import {ABORT, EXITSTATUS} 	from './utils.js';
+import utils 								from './utils.js';
 import {ExitStatus, Module} from './module.js';
 
 
@@ -140,7 +140,7 @@ const doRun = args => {
 
 	Module['calledRun'] = true;
 
-	if (ABORT) { return; }
+	if (utils.ABORT) { return; }
 
 	ensureInitRuntime();
 	preMain();
@@ -192,9 +192,9 @@ const exit = (status, implicit) => {
 	if (implicit && Module['noExitRuntime'] && status === 0) { return; }
 
 	if (!Module['noExitRuntime']) {
-		ABORT 		 = true;
-		EXITSTATUS = status;
-		STACKTOP 	 = 0;
+		utils.ABORT 		 = true;
+		utils.EXITSTATUS = status;
+		STACKTOP 	 			 = 0;
 
 		exitRuntime();
 	}
@@ -203,7 +203,7 @@ const exit = (status, implicit) => {
 };
 
 
-export {
+export default {
 	__ATEXIT__,
 	__ATINIT__,
 	__ATMAIN__,

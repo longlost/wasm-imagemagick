@@ -1,25 +1,10 @@
 
 
-import {
-	chmod,
-	isDir,
-	isFile,
-	lookupPath,
-	mkdir,
-	readdir,
-	rmdir,
-	stat,
-	unlink,
-	utime,
-	writeFile
-} from './fs-shared.js';
-
-import {assert} from './utils.js';
+import utils 		from './utils.js';
+import fsShared from './fs-shared.js';
 import PATH 		from './path.js';
 import MEMFS 		from './memfs.js';
-
-
-window = window || self;
+import '@ungap/global-this';
 
 
 const isRealDir = p => p !== '.' && p !== '..';
@@ -35,14 +20,14 @@ const IDBFS = {
 
 		let ret = null;
 
-		if (typeof window === 'object') {
-			ret = window.indexedDB 			 || 
-						window.mozIndexedDB 	 || 
-						window.webkitIndexedDB || 
-						window.msIndexedDB;
+		if (typeof globalThis === 'object') {
+			ret = globalThis.indexedDB 			 || 
+						globalThis.mozIndexedDB 	 || 
+						globalThis.webkitIndexedDB || 
+						globalThis.msIndexedDB;
 		}
 
-		assert(ret, 'IDBFS used, but indexedDB not supported');
+		utils.assert(ret, 'IDBFS used, but indexedDB not supported');
 
 		return ret;
 	},
@@ -124,7 +109,7 @@ const IDBFS = {
 	getLocalSet(mount, callback) {
 		const entries = {};		
 
-		const check = readdir(mount.mountpoint).
+		const check = fsShared.readdir(mount.mountpoint).
 										filter(isRealDir).
 										map(toAbsolute(mount.mountpoint));
 
@@ -133,14 +118,14 @@ const IDBFS = {
 			let statObj;
 
 			try {
-				statObj = stat(path);
+				statObj = fsShared.stat(path);
 			}
 			catch (error) {
 				return callback(error);
 			}
 
-			if (isDir(statObj.mode)) {
-				check.push.apply(check, readdir(path).filter(isRealDir).map(toAbsolute(path)));
+			if (fsShared.isDir(statObj.mode)) {
+				check.push.apply(check, fsShared.readdir(path).filter(isRealDir).map(toAbsolute(path)));
 			}
 
 			entries[path] = {timestamp: statObj.mtime};
@@ -190,10 +175,10 @@ const IDBFS = {
 		let node;
 
 		try {
-			const lookup = lookupPath(path);
+			const lookup = fsShared.lookupPath(path);
 
 			node 	  = lookup.node;
-			statObj = stat(path);
+			statObj = fsShared.stat(path);
 		}
 		catch (error) {
 			return callback(error);
@@ -201,10 +186,10 @@ const IDBFS = {
 
 		const {mode, mtime} = statObj;
 
-		if (isDir(mode)) {
+		if (fsShared.isDir(mode)) {
 			return callback(null, {timestamp: mtime, mode});
 		}
-		else if (isFile(mode)) {
+		else if (fsShared.isFile(mode)) {
 			node.contents = MEMFS.getFileDataAsTypedArray(node);
 
 			return callback(null, {timestamp: mtime, mode, contents: node.contents});
@@ -219,18 +204,18 @@ const IDBFS = {
 
 			const {contents, mode, timestamp} = entry;
 
-			if (isDir(mode)) {
-				mkdir(path, mode);
+			if (fsShared.isDir(mode)) {
+				fsShared.mkdir(path, mode);
 			}
-			else if (isFile(mode)) {
-				writeFile(path, contents, {canOwn: true});
+			else if (fsShared.isFile(mode)) {
+				fsShared.writeFile(path, contents, {canOwn: true});
 			}
 			else {
 				return callback(new Error('node type not supported'));
 			}
 
-			chmod(path, mode);
-			utime(path, timestamp, timestamp);
+			fsShared.chmod(path, mode);
+			fsShared.utime(path, timestamp, timestamp);
 		}
 		catch (error) {
 			return callback(error);
@@ -243,15 +228,15 @@ const IDBFS = {
 		try {
 
 			// Used to check for errors??
-			lookupPath(path);
+			fsShared.lookupPath(path);
 
-			const {mode} = stat(path);
+			const {mode} = fsShared.stat(path);
 
-			if (isDir(mode)) {
-				rmdir(path);
+			if (fsShared.isDir(mode)) {
+				fsShared.rmdir(path);
 			}
-			else if (isFile(mode)) {
-				unlink(path);
+			else if (fsShared.isFile(mode)) {
+				fsShared.unlink(path);
 			}
 		}
 		catch (error) {

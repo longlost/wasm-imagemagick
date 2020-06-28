@@ -7,7 +7,7 @@ import {
 	ENVIRONMENT_IS_SHELL
 } from './constants.js';
 
-import {assert} from './utils.js';
+import utils from './utils.js';
 
 
 const getReaders = () => {
@@ -45,7 +45,7 @@ const getReaders = () => {
 				result = new Uint8Array(result);
 			}
 
-			assert(result.buffer);
+			utils.assert(result.buffer);
 
 			return result;
 		};
@@ -63,7 +63,7 @@ const getReaders = () => {
 
 			const data = read(f, 'binary');
 
-			assert(typeof data === 'object');
+			utils.assert(typeof data === 'object');
 
 			return data;
 		};
@@ -105,4 +105,4 @@ const getReaders = () => {
 const {reader, readBinary} = getReaders();
 
 
-export {reader, readBinary};
+export default {reader, readBinary};

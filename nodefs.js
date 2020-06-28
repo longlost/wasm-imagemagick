@@ -1,9 +1,11 @@
 
 
 import {ENVIRONMENT_IS_NODE, ERRNO_CODES}  from './constants.js';
-import {ErrnoError, assert} 							 from './utils.js';
-import {createNode, isDir, isFile, isLink} from './fs-shared.js';
-import PATH 				 											 from './path.js';
+
+import utils 		from './utils.js';
+import fsShared from './fs-shared.js';
+import PATH 		from './path.js';
+
 
 let fs;
 
@@ -42,17 +44,17 @@ const NODEFS = {
 	bufferFrom: arrayBuffer => Buffer.alloc ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer),
 
 	mount({opts}) {
-		assert(ENVIRONMENT_IS_NODE);
+		utils.assert(ENVIRONMENT_IS_NODE);
 
 		return NODEFS.createNode(null, '/', NODEFS.getMode(opts.root), 0);
 	},
 
 	createNode(parent, name, mode, dev) {
-		if (!isDir(mode) && !isFile(mode) && !isLink(mode)) {
-			throw new ErrnoError(ERRNO_CODES.EINVAL);
+		if (!fsShared.isDir(mode) && !fsShared.isFile(mode) && !fsShared.isLink(mode)) {
+			throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 		}
 
-		const node = createNode(parent, name, mode);
+		const node = fsShared.createNode(parent, name, mode);
 
 		node.node_ops 	= NODEFS.node_ops;
 		node.stream_ops = NODEFS.stream_ops;
@@ -73,7 +75,7 @@ const NODEFS = {
 		catch (error) {
 			if (!error.code) { throw error; }
 
-			throw new ErrnoError(ERRNO_CODES[error.code]);
+			throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 		}
 
 		return stat.mode;
@@ -112,7 +114,7 @@ const NODEFS = {
 			return newFlags;
 		}
 		else {
-			throw new ErrnoError(ERRNO_CODES.EINVAL);
+			throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 		}
 	},
 
@@ -126,7 +128,7 @@ const NODEFS = {
 			}
 			catch (error) {
 				if (!error.code) { throw error; }
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 
 			if (NODEFS.isWindows && !stat.blksize) {
@@ -176,7 +178,7 @@ const NODEFS = {
 			catch (error) {
 				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		},
 
@@ -192,7 +194,7 @@ const NODEFS = {
 			const path = NODEFS.realPath(node);
 
 			try {
-				if (isDir(node.mode)) {
+				if (fsShared.isDir(node.mode)) {
 					fs.mkdirSync(path, node.mode);
 				}
 				else {
@@ -202,7 +204,7 @@ const NODEFS = {
 			catch (error) {
 				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 
 			return node;
@@ -218,7 +220,7 @@ const NODEFS = {
 			catch (error) {
 				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		},
 
@@ -231,7 +233,7 @@ const NODEFS = {
 			catch (error) {
 				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		},
 
@@ -244,7 +246,7 @@ const NODEFS = {
 			catch (error) {
 				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		},
 
@@ -257,7 +259,7 @@ const NODEFS = {
 			catch (error) {
 				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		},
 
@@ -270,7 +272,7 @@ const NODEFS = {
 			catch (error) {
 				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		},
 
@@ -286,7 +288,7 @@ const NODEFS = {
 			catch (error) {
 				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		}
 	},
@@ -296,27 +298,27 @@ const NODEFS = {
 			const path = NODEFS.realPath(stream.node);
 
 			try {
-				if (isFile(stream.node.mode)) {
+				if (fsShared.isFile(stream.node.mode)) {
 					stream.nfd = fs.openSync(path, NODEFS.flagsForNode(stream.flags));
 				}
 			}
 			catch (error) {
 				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		},
 
 		close(stream) {
 			try {
-				if (isFile(stream.node.mode) && stream.nfd) {
+				if (fsShared.isFile(stream.node.mode) && stream.nfd) {
 					fs.closeSync(stream.nfd);
 				}
 			}
 			catch (error) {
 				if (!error.code) { throw error; }
 
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		},
 
@@ -327,7 +329,7 @@ const NODEFS = {
 				return fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
 			}
 			catch (error) {
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		},
 
@@ -336,7 +338,7 @@ const NODEFS = {
 				return fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
 			}
 			catch (error) {
-				throw new ErrnoError(ERRNO_CODES[error.code]);
+				throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 			}
 		},
 
@@ -347,20 +349,20 @@ const NODEFS = {
 				position += stream.position;
 			}
 			else if (whence === 2) {
-				if (isFile(stream.node.mode)) {
+				if (fsShared.isFile(stream.node.mode)) {
 					try {
 						var stat = fs.fstatSync(stream.nfd);
 
 						position += stat.size;
 					}
 					catch (error) {
-						throw new ErrnoError(ERRNO_CODES[error.code]);
+						throw new utils.ErrnoError(ERRNO_CODES[error.code]);
 					}
 				}
 			}
 
 			if (position < 0) {
-				throw new ErrnoError(ERRNO_CODES.EINVAL);
+				throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 			}
 
 			return position;
