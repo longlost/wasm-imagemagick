@@ -1438,7 +1438,7 @@ const FS = {
 
 	saveFilesToDB(paths, onload = () => {}, onerror = () => {}) {		
 		const indexedDB = FS.indexedDB();
-		let openRequest,
+		let openRequest;
 
 		try {
 			openRequest = indexedDB.open(FS.DB_NAME(), FS.DB_VERSION);

@@ -17,7 +17,7 @@ import {
 import {
 	HEAP8,
 	HEAP16,
-	HEAP32
+	HEAP32,
 	HEAPU8,
 	Pointer_stringify
 } from './memory.js';

@@ -12,7 +12,12 @@ const NODEFS = {
 
 	staticInit() {
 
-		fs = require('fs');
+		// This is a workaround for bundlers to skip 
+		// these dynamic require statements that 
+		// pull in modules that are built into Node.
+		const bundlerIgnoredRequire = m => eval('require')(m);
+
+		fs = bundlerIgnoredRequire('fs');
 
 		NODEFS.isWindows = !!process.platform.match(/^win/);
 

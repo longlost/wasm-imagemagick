@@ -1,8 +1,8 @@
 {
   "name": "@longlost/wasm-imagemagick",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A port of https://github.com/KnicKnic/WASM-ImageMagick library. The port utilizes ES imports to clean up the api and removes the web worker abstraction..",
-  "main": "index.js",
+  "main": "wasm-imagemagick.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

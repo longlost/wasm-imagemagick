@@ -952,6 +952,7 @@ export {
 	lookupNode,
 	lookupPath,
 	mayCreate,
+	mayDelete,
 	mayLookup,
 	mayOpen,
 	mkdir,

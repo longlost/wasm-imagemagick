@@ -1,15 +1,15 @@
 
 
-import {
+import {	
+	ENVIRONMENT_IS_NODE, 
+	ENVIRONMENT_IS_WEB, 
+	ENVIRONMENT_IS_WORKER, 
 	ERRNO_CODES,
 	PAGE_SIZE
 } from './constants.js';
 
 import {
 	_free, 
-	ENVIRONMENT_IS_NODE, 
-	ENVIRONMENT_IS_WEB, 
-	ENVIRONMENT_IS_WORKER, 
 	abort
 }	from './utils.js';
 
@@ -92,7 +92,7 @@ const _emscripten_get_now_is_monotonic = () => (
 	ENVIRONMENT_IS_NODE || 
 	(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && 
 	self['performance'] && 
-	self['performance']['now'];
+	self['performance']['now']
 );
 
 const ___setErrNo = value => {

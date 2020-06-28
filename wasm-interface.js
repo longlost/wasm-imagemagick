@@ -27,7 +27,7 @@ import {
 	allocateUTF8OnStack,
 	stackAlloc,
 	staticAlloc,	
-	staticSealed
+	staticSealed,
 	updateGlobalBufferViews
 } from './memory.js';
 
