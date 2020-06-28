@@ -10,78 +10,46 @@ import {
 } from './constants.js';
 
 import {
-	abort,
-	err,
-} from './utils.js';
-
-import {
 	ExitStatus,
 	Module
 } from './module.js';
 
-import {
-	DYNAMICTOP_PTR,
-	HEAP32,
-	STATICTOP,
-	TOTAL_STACK,
-	allocateUTF8OnStack,
-	stackAlloc,
-	staticAlloc,	
-	staticSealed,
-	updateGlobalBufferViews
-} from './memory.js';
-
-import {
-	_emscripten_get_now,
-} from './environment.js';
-
-import {
-	__ATEXIT__,
-	__ATINIT__,
-	__ATMAIN__,
-	STACKTOP,
-	ensureInitRuntime,
-	exit,
-	run,
-	shouldRunNow
-} from './runtime.js';
-
-import {
-	___emscripten_environ_constructor,
-	setAsm
-} from './asm.js';
-
+import utils 					 from './utils.js';
+import memory 				 from './memory.js';
+import environment 		 from './environment.js';
+import runtime 				 from './runtime.js';
+import asm 						 from './asm.js';
 import TTY 						 from './tty.js';
 import NODEFS 				 from './nodefs.js';
 import FS 						 from './fs.js';
 import integrateWasmJS from './integrate.js';
 
 
-updateGlobalBufferViews();
+memory.updateGlobalBufferViews();
 integrateWasmJS();
 
 
 const STATIC_BASE = 1024;
 
-STATICTOP = STATIC_BASE + 1212304;
+memory.STATICTOP = STATIC_BASE + 1212304;
 
-__ATINIT__.push({
+runtime.__ATINIT__.push({
 	func: (function() {
-		___emscripten_environ_constructor();
+		asm.___emscripten_environ_constructor();
 	})
 });
 
 Module['STATIC_BASE'] = STATIC_BASE;
 Module['STATIC_BUMP'] = 1212304;
 
-STATICTOP += 16;
-STATICTOP += 16;
-STATICTOP += 16;
-STATICTOP += 16;
+memory.STATICTOP += 16;
+memory.STATICTOP += 16;
+memory.STATICTOP += 16;
+memory.STATICTOP += 16;
 
 
 if (ENVIRONMENT_IS_NODE) {
-	_emscripten_get_now = function _emscripten_get_now_actual() {
+	environment._emscripten_get_now = function _emscripten_get_now_actual() {
 		const t = process['hrtime']();
 
 		return t[0] * 1e3 + t[1] / 1e6;
@@ -92,38 +60,38 @@ else if (
 	self['performance'] && 
 	typeof self['performance']['now'] === 'function'
 ) {
-	_emscripten_get_now = () => self['performance']['now']();
+	environment._emscripten_get_now = () => self['performance']['now']();
 }
 else if (typeof performance === 'object' && typeof performance['now'] === 'function') {
-	_emscripten_get_now = () => performance['now']();
+	environment._emscripten_get_now = () => performance['now']();
 }
 else {
-	_emscripten_get_now = Date.now;
+	environment._emscripten_get_now = Date.now;
 }
 
 
 FS.staticInit();
 
 
-__ATINIT__.unshift(() => {
+runtime.__ATINIT__.unshift(() => {
 	if (!Module['noFSInit'] && !FS.init.initialized) {
 		FS.init();
 	}
 });
 
-__ATMAIN__.push(() => {
+runtime.__ATMAIN__.push(() => {
 	FS.ignorePermissions = false;
 });
 
-__ATEXIT__.push(() => {
+runtime.__ATEXIT__.push(() => {
 	FS.quit();
 });
 
-__ATINIT__.unshift(() => {
+runtime.__ATINIT__.unshift(() => {
 	TTY.init();
 });
 
-__ATEXIT__.push(() => {
+runtime.__ATEXIT__.push(() => {
 	TTY.shutdown();
 });
 
@@ -149,37 +117,37 @@ const alignMemory = (size, factor) => {
 	return Math.ceil(size / factor) * factor;
 };
 
-DYNAMICTOP_PTR = staticAlloc(4);
-STACK_BASE 		 = STACKTOP = alignMemory(STATICTOP);
-STACK_MAX 		 = STACK_BASE + TOTAL_STACK;
+memory.DYNAMICTOP_PTR = memory.staticAlloc(4);
+STACK_BASE 		 = runtime.STACKTOP = alignMemory(memory.STATICTOP);
+STACK_MAX 		 = STACK_BASE + memory.TOTAL_STACK;
 DYNAMIC_BASE 	 = alignMemory(STACK_MAX);
 
-HEAP32[DYNAMICTOP_PTR >> 2] = DYNAMIC_BASE;
+memory.HEAP32[memory.DYNAMICTOP_PTR >> 2] = DYNAMIC_BASE;
 
-staticSealed = true;
+memory.staticSealed = true;
 
 
-setAsm();
+asm.setAsm();
 
 
 const callMain = (...args) => {
-	ensureInitRuntime();
+	runtime.ensureInitRuntime();
 
 	const argc = args.length + 1;
-	const argv = stackAlloc((argc + 1) * 4);
+	const argv = memory.stackAlloc((argc + 1) * 4);
 
-	HEAP32[argv >> 2] = allocateUTF8OnStack(Module['thisProgram']);
+	memory.HEAP32[argv >> 2] = memory.allocateUTF8OnStack(Module['thisProgram']);
 
 	for (let i = 1; i < argc; i++) {
-		HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
+		memory.HEAP32[(argv >> 2) + i] = memory.allocateUTF8OnStack(args[i - 1]);
 	}
 
-	HEAP32[(argv >> 2) + argc] = 0;
+	memory.HEAP32[(argv >> 2) + argc] = 0;
 
 	try {
 		const ret = Module['_main'](argc, argv, 0);
 
-		exit(ret, true);
+		runtime.exit(ret, true);
 	}
 	catch (e) {
 		if (e instanceof ExitStatus) {
@@ -197,7 +165,7 @@ const callMain = (...args) => {
 				toLog = [e, e.stack];
 			}
 
-			err(`exception thrown: ${toLog}`);
+			utils.err(`exception thrown: ${toLog}`);
 
 			Module['quit'](1, e);
 		}
@@ -205,7 +173,7 @@ const callMain = (...args) => {
 };
 
 
-Module['abort'] = abort;
+Module['abort'] = utils.abort;
 
 
 if (Module['preInit']) {
@@ -219,13 +187,13 @@ if (Module['preInit']) {
 }
 
 if (Module['noInitialRun']) {
-	shouldRunNow = false;
+	runtime.shouldRunNow = false;
 }
 
 Module['noExitRuntime'] = true;
 
 
-run();
+runtime.run();
 
 
 export {

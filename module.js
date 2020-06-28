@@ -7,15 +7,8 @@ import {
 	ENVIRONMENT_IS_SHELL
 } from './constants.js';
 
-import {
-	err,
-	out,
-} from './utils.js';
-
-import {
-	reader,
-	readBinary
-} from './read.js';
+import utils 	 from './utils.js';
+import readers from './read.js';
 
 
 const Module = {};
@@ -31,11 +24,11 @@ Module['quit'] = (status, toThrow) => {
 Module['preRun']  = []; 
 Module['postRun'] = [];
 
-Module['read'] 			 = reader;
-Module['readBinary'] = readBinary;
+Module['read'] 			 = readers.reader;
+Module['readBinary'] = readers.readBinary;
 
-Module['print'] 	 = out;
-Module['printErr'] = err;
+Module['print'] 	 = utils.out;
+Module['printErr'] = utils.err;
 
 Module['preloadedImages'] = {};
 Module['preloadedAudios'] = {};

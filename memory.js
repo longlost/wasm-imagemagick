@@ -5,16 +5,7 @@ import {
 	WASM_PAGE_SIZE
 } from './constants.js';
 
-import {
-	UTF8ArrayToString, 
-	abort, 
-	alignUp, 
-	assert, 
-	err, 
-	lengthBytesUTF8, 
-	stringToUTF8Array
-} from './utils.js';
-
+import utils 		from './utils.js';
 import {Module} from './module.js';
 
 
@@ -23,7 +14,7 @@ let 	TOTAL_MEMORY = Module['TOTAL_MEMORY'] || 16777216;
 
 
 if (TOTAL_MEMORY < TOTAL_STACK) {
-	err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK = ' + TOTAL_STACK + ')');
+	utils.err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK = ' + TOTAL_STACK + ')');
 }
 
 let STATICTOP 		 = 0;
@@ -85,10 +76,10 @@ const enlargeMemory = () => {
 	while (TOTAL_MEMORY < HEAP32[DYNAMICTOP_PTR >> 2]) {
 
 		if (TOTAL_MEMORY <= 536870912) {
-			TOTAL_MEMORY = alignUp(2 * TOTAL_MEMORY, PAGE_MULTIPLE);
+			TOTAL_MEMORY = utils.alignUp(2 * TOTAL_MEMORY, PAGE_MULTIPLE);
 		}
 		else {
-			TOTAL_MEMORY = Math.min(alignUp((3 * TOTAL_MEMORY + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
+			TOTAL_MEMORY = Math.min(utils.alignUp((3 * TOTAL_MEMORY + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
 		}
 	}
 
@@ -169,7 +160,7 @@ const setValue = (ptr, value, type, noSafe) => {
 			HEAPF64[ptr >> 3] = value;
 			break;
 		default:
-			abort('invalid type for setValue: ' + type);
+			utils.abort('invalid type for setValue: ' + type);
 	}
 };
 
@@ -196,7 +187,7 @@ const getNativeTypeSize = type => {
 				else if (type[0] === 'i') {
 					const bits = parseInt(type.substr(1));
 
-					assert(bits % 8 === 0);
+					utils.assert(bits % 8 === 0);
 
 					return bits / 8;
 				}
@@ -243,7 +234,7 @@ const allocate = (slab, types, allocator, ptr) => {
 
 		ptr = ret;
 
-		assert((ret & 3) == 0);
+		utils.assert((ret & 3) == 0);
 
 		stop = ret + (size & ~3);
 
@@ -265,11 +256,12 @@ const allocate = (slab, types, allocator, ptr) => {
 
 
 
-//			HEAPU8.set(slab, ret);
+			// HEAPU8.set(slab, ret);
 
 
 
 
+			
 		}
 		else {
 			HEAPU8.set(new Uint8Array(slab), ret);
@@ -311,7 +303,7 @@ const allocate = (slab, types, allocator, ptr) => {
 };
 
 
-const UTF8ToString = ptr => UTF8ArrayToString(HEAPU8, ptr);
+const UTF8ToString = ptr => utils.UTF8ArrayToString(HEAPU8, ptr);
 
 
 const Pointer_stringify = (ptr, length) => {
@@ -361,7 +353,7 @@ const Pointer_stringify = (ptr, length) => {
 };
 
 const ___assert_fail = (condition, filename, line, func) => {
-	abort(
+	utils.abort(
 		'Assertion failed: ' + 
 		Pointer_stringify(condition) + ', at: ' + 
 		[filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function']
@@ -369,25 +361,25 @@ const ___assert_fail = (condition, filename, line, func) => {
 };
 
 const abortOnCannotGrowMemory = () => {
-	abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH = 1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC = 0 ');
+	utils.abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH = 1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC = 0 ');
 };
 
 const allocateUTF8 = str => {
-	const size = lengthBytesUTF8(str) + 1;
+	const size = utils.lengthBytesUTF8(str) + 1;
 	const ret  = _malloc(size);
 
 	if (ret) {
-		stringToUTF8Array(str, HEAP8, ret, size);
+		utils.stringToUTF8Array(str, HEAP8, ret, size);
 	}
 
 	return ret;
 };
 
 const allocateUTF8OnStack = str => {
-	const size = lengthBytesUTF8(str) + 1;
+	const size = utils.lengthBytesUTF8(str) + 1;
 	const ret  = stackAlloc(size);
 
-	stringToUTF8Array(str, HEAP8, ret, size);
+	utils.stringToUTF8Array(str, HEAP8, ret, size);
 
 	return ret;
 }
@@ -468,7 +460,7 @@ else {
 }
 
 
-export {
+export default {
 	___assert_fail,
 	_emscripten_memcpy_big,
 	_emscripten_replace_memory,
