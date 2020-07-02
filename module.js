@@ -111,7 +111,7 @@ else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 }
 
 
-export {
+export default {
 	ExitStatus,
 	Module, 
 	scriptDirectory

@@ -10,28 +10,27 @@ import {
 import utils 	 from './utils.js';
 import memory  from './memory.js';
 import runtime from './runtime.js';
+import mod 		 from './module.js';
 
-import {Module, scriptDirectory} from './module.js';
 
+// const dataURIPrefix = 'data:application/octet-stream;base64,';
 
-const dataURIPrefix = 'data:application/octet-stream;base64,';
+// const isDataURI = filename => String.prototype.startsWith ? 
+// 																filename.startsWith(dataURIPrefix) : 
+// 																filename.indexOf(dataURIPrefix) === 0;
 
-const isDataURI = filename => String.prototype.startsWith ? 
-																filename.startsWith(dataURIPrefix) : 
-																filename.indexOf(dataURIPrefix) === 0;
-
-const locateFile = path => {
+// const locateFile = path => {
 	
-	if (Module['locateFile']) {
-		return Module['locateFile'](path, scriptDirectory);
-	} 
-	else {
-		return scriptDirectory + path;
-	}
-};
+// 	if (mod.Module['locateFile']) {
+// 		return mod.Module['locateFile'](path, mod.scriptDirectory);
+// 	} 
+// 	else {
+// 		return mod.scriptDirectory + path;
+// 	}
+// };
 
 const mergeMemory = newBuffer => {
-	const oldBuffer = Module['buffer'];
+	const oldBuffer = mod.Module['buffer'];
 
 	if (newBuffer.byteLength < oldBuffer.byteLength) {
 		utils.err('the new buffer in mergeMemory is smaller than the previous one. in native wasm, we should grow memory here');
@@ -52,8 +51,8 @@ const receiveInstance = instance => {
 		mergeMemory(exported.memory);
 	}
 
-	Module['asm'] 			= exported;
-	Module['usingWasm'] = true;
+	mod.Module['asm'] 			= exported;
+	mod.Module['usingWasm'] = true;
 
 	runtime.removeRunDependency('wasm-instantiate');
 };
@@ -63,20 +62,20 @@ const receiveInstantiatedSource = output => {
 };
 
 const wasmReallocBuffer = size => {
-	const PAGE_MULTIPLE = Module['usingWasm'] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
-	const old 					= Module['buffer'];
+	const PAGE_MULTIPLE = mod.Module['usingWasm'] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
+	const old 					= mod.Module['buffer'];
 	const oldSize 			= old.byteLength;
 
 	size = utils.alignUp(size, PAGE_MULTIPLE);		
 
-	if (Module['usingWasm']) {
+	if (mod.Module['usingWasm']) {
 		try {
 
 			const wasmPageSize = 64 * 1024;
-			const result 			 = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize);
+			const result 			 = mod.Module['wasmMemory'].grow((size - oldSize) / wasmPageSize);
 
 			if (result !== (-1 | 0)) {
-				return Module['buffer'] = Module['wasmMemory'].buffer;
+				return mod.Module['buffer'] = mod.Module['wasmMemory'].buffer;
 			}
 			else {
 				return null;
@@ -101,74 +100,75 @@ const info = {
 	'global': 	null,
 	'env': 			null,
 	'asm2wasm': asm2wasmImports,
-	'parent': 	Module
+	'parent': 	mod.Module
 };
 
 
-Module['wasmTableSize'] 	 = 1862;
-Module['wasmMaxTableSize'] = 1862;
+mod.Module['wasmTableSize'] 	 = 1862;
+mod.Module['wasmMaxTableSize'] = 1862;
 
 
 const integrateWasmJS = () => {
-	let wasmTextFile 	 = 'magick.wast';
-	let wasmBinaryFile = 'magick.wasm';
-	let asmjsCodeFile  = 'magick.temp.asm.js';
+	// let wasmTextFile 	 = 'magick.wast';
+	// let wasmBinaryFile = 'magick.wasm';
+	// let asmjsCodeFile  = 'magick.temp.asm.js';
 
-	if (!isDataURI(wasmTextFile)) {
-		wasmTextFile = locateFile(wasmTextFile);
-	}
 
-	if (!isDataURI(wasmBinaryFile)) {
-		wasmBinaryFile = locateFile(wasmBinaryFile);
-	}
+	// if (!isDataURI(wasmTextFile)) {
+	// 	wasmTextFile = locateFile(wasmTextFile);
+	// }
 
-	if (!isDataURI(asmjsCodeFile)) {
-		asmjsCodeFile = locateFile(asmjsCodeFile);
-	}
+	// if (!isDataURI(wasmBinaryFile)) {
+	// 	wasmBinaryFile = locateFile(wasmBinaryFile);
+	// }
 
-	const getBinary = () => {
-		try {
-			if (Module['wasmBinary']) {
-				return new Uint8Array(Module['wasmBinary']);
-			}
+	// if (!isDataURI(asmjsCodeFile)) {
+	// 	asmjsCodeFile = locateFile(asmjsCodeFile);
+	// }
 
-			if (Module['readBinary']) {
-				return Module['readBinary'](wasmBinaryFile);
-			}
-			else {
-				throw 'both async and sync fetching of the wasm failed';
-			}
-		}
-		catch (error) {
-			utils.abort(error);
-		}
-	};
+	// const getBinary = () => {
+	// 	try {
+	// 		if (mod.Module['wasmBinary']) {
+	// 			return new Uint8Array(mod.Module['wasmBinary']);
+	// 		}
 
-	const getBinaryPromise = async () => {
-		if (
-			!Module['wasmBinary'] && 
-			(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && 
-			typeof fetch === 'function'
-		) {
+	// 		if (mod.Module['readBinary']) {
+	// 			return mod.Module['readBinary'](wasmBinaryFile);
+	// 		}
+	// 		else {
+	// 			throw 'both async and sync fetching of the wasm failed';
+	// 		}
+	// 	}
+	// 	catch (error) {
+	// 		utils.abort(error);
+	// 	}
+	// };
 
-			try {
-				const response = await fetch(wasmBinaryFile, {credentials: 'same-origin'});
+	// const getBinaryPromise = async () => {
+	// 	if (
+	// 		!mod.Module['wasmBinary'] && 
+	// 		(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && 
+	// 		typeof fetch === 'function'
+	// 	) {
 
-				if (!response.ok) {
-					throw `failed to load wasm binary file at '${wasmBinaryFile}'`;
-				}
+	// 		try {
+	// 			const response = await fetch(wasmBinaryFile, {credentials: 'same-origin'});
 
-				return response['arrayBuffer']();
-			}
-			catch (_) {
-				return getBinary();
-			}
-		}
+	// 			if (!response.ok) {
+	// 				throw `failed to load wasm binary file at '${wasmBinaryFile}'`;
+	// 			}
 
-		return new Promise((resolve, reject) => {
-			resolve(getBinary());
-		});
-	};
+	// 			return response.arrayBuffer();
+	// 		}
+	// 		catch (_) {
+	// 			return getBinary();
+	// 		}
+	// 	}
+
+	// 	return new Promise((resolve, reject) => {
+	// 		resolve(getBinary());
+	// 	});
+	// };
 
 	const doNativeWasm = async (global, env, providedBuffer) => {
 
@@ -178,22 +178,22 @@ const integrateWasmJS = () => {
 			return false;
 		}
 
-		if (!(Module['wasmMemory'] instanceof WebAssembly.Memory)) {
+		if (!(mod.Module['wasmMemory'] instanceof WebAssembly.Memory)) {
 			utils.err('no native wasm Memory in use');
 
 			return false;
 		}
 
-		env['memory'] 			= Module['wasmMemory'];
+		env['memory'] 			= mod.Module['wasmMemory'];
 		info['global'] 			= {'NaN': NaN, 'Infinity': Infinity};
 		info['global.Math'] = Math;
 		info['env'] 				= env;		
 
 		runtime.addRunDependency('wasm-instantiate');
 
-		if (Module['instantiateWasm']) {
+		if (mod.Module['instantiateWasm']) {
 			try {
-				return Module['instantiateWasm'](info, receiveInstance);
+				return mod.Module['instantiateWasm'](info, receiveInstance);
 			}
 			catch (error) {
 				utils.err(`Module.instantiateWasm callback failed with error: ${error}`);
@@ -202,10 +202,54 @@ const integrateWasmJS = () => {
 			}
 		}		
 
+		// const instantiateArrayBuffer = async receiver => {
+		// 	try {
+		// 		const binary = await getBinaryPromise();
+		// 		const output = await WebAssembly.instantiate(binary, info);
+				
+		// 		receiver(output);
+		// 	}
+		// 	catch (error) {
+		// 		utils.err(`failed to asynchronously prepare wasm: ${error}`);
+		// 		utils.abort(error);
+		// 	}
+		// };
+
+		// if (
+		// 	!mod.Module['wasmBinary'] && 
+		// 	typeof WebAssembly.instantiateStreaming === 'function' && 
+		// 	!isDataURI(wasmBinaryFile) && 
+		// 	typeof fetch === 'function'
+		// ) {
+
+		// 	try {
+		// 		const output = await WebAssembly.instantiateStreaming(
+		// 			fetch(wasmBinaryFile, {credentials: 'same-origin'}), 
+		// 			info
+		// 		);
+
+		// 		receiveInstantiatedSource(output);
+		// 	}
+		// 	catch (error) {
+		// 		utils.err(`wasm streaming compile failed: ${error}`);
+		// 		utils.err('falling back to ArrayBuffer instantiation');
+		// 		instantiateArrayBuffer(receiveInstantiatedSource);
+		// 	}
+		// }
+		// else {
+		// 	instantiateArrayBuffer(receiveInstantiatedSource);
+		// }
+
 		const instantiateArrayBuffer = async receiver => {
 			try {
-				const binary = await getBinaryPromise();
-				const output = await WebAssembly.instantiate(binary, info);
+				const magickWasm = await import(
+					/* webpackChunkName: 'magick-wasm' */ 
+					'wasm-imagemagick/dist/magick.wasm'
+				);
+
+				const response = await fetch(magickWasm.default);
+				const buffer 	 = await response.arrayBuffer();
+				const output 	 = await WebAssembly.instantiate(buffer, info);
 				
 				receiver(output);
 			}
@@ -215,23 +259,29 @@ const integrateWasmJS = () => {
 			}
 		};
 
+
 		if (
-			!Module['wasmBinary'] && 
+			!mod.Module['wasmBinary'] && 
 			typeof WebAssembly.instantiateStreaming === 'function' && 
-			!isDataURI(wasmBinaryFile) && 
 			typeof fetch === 'function'
 		) {
 
 			try {
+
+				const magickWasm = await import(
+					/* webpackChunkName: 'magick-wasm' */ 
+					'wasm-imagemagick/dist/magick.wasm'
+				);
+
 				const output = await WebAssembly.instantiateStreaming(
-					fetch(wasmBinaryFile, {credentials: 'same-origin'}), 
+					fetch(magickWasm.default, {credentials: 'same-origin'}), 
 					info
 				);
 
 				receiveInstantiatedSource(output);
 			}
 			catch (error) {
-				utils.err(`wasm streaming compile failed: ${reason}`);
+				utils.err(`wasm streaming compile failed: ${error}`);
 				utils.err('falling back to ArrayBuffer instantiation');
 				instantiateArrayBuffer(receiveInstantiatedSource);
 			}
@@ -244,20 +294,20 @@ const integrateWasmJS = () => {
 	};
 
 
-	Module['asmPreload'] 		= Module['asm'];
-	Module['reallocBuffer'] = wasmReallocBuffer;
+	mod.Module['asmPreload'] 		= mod.Module['asm'];
+	mod.Module['reallocBuffer'] = wasmReallocBuffer;
 
-	Module['asm'] = (global, env, providedBuffer) => {
+	mod.Module['asm'] = (global, env, providedBuffer) => {
 		env = fixImports(env);
 
 		if (!env['table']) {
-			let TABLE_SIZE = Module['wasmTableSize'];
+			let TABLE_SIZE = mod.Module['wasmTableSize'];
 
 			if (TABLE_SIZE === undefined) {
 				TABLE_SIZE = 1024;
 			}
 
-			const MAX_TABLE_SIZE = Module['wasmMaxTableSize'];
+			const MAX_TABLE_SIZE = mod.Module['wasmMaxTableSize'];
 
 			if (typeof WebAssembly === 'object' && typeof WebAssembly.Table === 'function') {
 
@@ -279,11 +329,11 @@ const integrateWasmJS = () => {
 				env['table'] = new Array(TABLE_SIZE);
 			}
 
-			Module['wasmTable'] = env['table'];
+			mod.Module['wasmTable'] = env['table'];
 		}
 
 		if (!env['memoryBase']) {
-			env['memoryBase'] = Module['STATIC_BASE'];
+			env['memoryBase'] = mod.Module['STATIC_BASE'];
 		}
 
 		if (!env['tableBase']) {

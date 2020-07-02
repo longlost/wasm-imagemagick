@@ -328,19 +328,19 @@ const EXPANSION_RULES_2 = {
 
 
 const _strftime = (s, maxsize, format, tm) => {
-	const tm_zone = memory.HEAP32[tm + 40 >> 2];
+	const tm_zone = memory.exposed.HEAP32[tm + 40 >> 2];
 
 	const date = {
-		tm_sec: 	 memory.HEAP32[tm >> 2], 
-		tm_min: 	 memory.HEAP32[tm + 4 >> 2],
-		tm_hour: 	 memory.HEAP32[tm + 8 >> 2],
-		tm_mday: 	 memory.HEAP32[tm + 12 >> 2],
-		tm_mon: 	 memory.HEAP32[tm + 16 >> 2],
-		tm_year: 	 memory.HEAP32[tm + 20 >> 2],
-		tm_wday: 	 memory.HEAP32[tm + 24 >> 2],
-		tm_yday: 	 memory.HEAP32[tm + 28 >> 2],
-		tm_isdst:  memory.HEAP32[tm + 32 >> 2],
-		tm_gmtoff: memory.HEAP32[tm + 36 >> 2],
+		tm_sec: 	 memory.exposed.HEAP32[tm >> 2], 
+		tm_min: 	 memory.exposed.HEAP32[tm + 4 >> 2],
+		tm_hour: 	 memory.exposed.HEAP32[tm + 8 >> 2],
+		tm_mday: 	 memory.exposed.HEAP32[tm + 12 >> 2],
+		tm_mon: 	 memory.exposed.HEAP32[tm + 16 >> 2],
+		tm_year: 	 memory.exposed.HEAP32[tm + 20 >> 2],
+		tm_wday: 	 memory.exposed.HEAP32[tm + 24 >> 2],
+		tm_yday: 	 memory.exposed.HEAP32[tm + 28 >> 2],
+		tm_isdst:  memory.exposed.HEAP32[tm + 32 >> 2],
+		tm_gmtoff: memory.exposed.HEAP32[tm + 36 >> 2],
 		tm_zone: 	 tm_zone ? memory.Pointer_stringify(tm_zone) : ''
 	};
 

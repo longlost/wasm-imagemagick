@@ -1,422 +1,423 @@
 
 
-import {Module} from './module.js';
+import mod from './module.js';
 
-
+// Exposed to be set/updated in other modules.
 // Set in 'asm.js' 'setAsm' function.
-let stackRestore;
-let stackSave;
+const exposed = {
+	stackRestore: null,
+	stackSave: 		null
+};
 
 
 const invoke_dii = (index, a1, a2) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_dii'](index, a1, a2);
+		return mod.Module['dynCall_dii'](index, a1, a2);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_i = index => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_i'](index);
+		return mod.Module['dynCall_i'](index);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_ii = (index, a1) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_ii'](index, a1);
+		return mod.Module['dynCall_ii'](index, a1);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iifi = (index, a1, a2, a3) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iifi'](index, a1, a2, a3);
+		return mod.Module['dynCall_iifi'](index, a1, a2, a3);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iii = (index, a1, a2) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iii'](index, a1, a2);
+		return mod.Module['dynCall_iii'](index, a1, a2);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iiii = (index, a1, a2, a3) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iiii'](index, a1, a2, a3);
+		return mod.Module['dynCall_iiii'](index, a1, a2, a3);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iiiii = (index, a1, a2, a3, a4) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iiiii'](index, a1, a2, a3, a4);
+		return mod.Module['dynCall_iiiii'](index, a1, a2, a3, a4);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iiiiii = (index, a1, a2, a3, a4, a5) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iiiiii'](index, a1, a2, a3, a4, a5);
+		return mod.Module['dynCall_iiiiii'](index, a1, a2, a3, a4, a5);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iiiiiii = (index, a1, a2, a3, a4, a5, a6) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iiiiiii'](index, a1, a2, a3, a4, a5, a6);
+		return mod.Module['dynCall_iiiiiii'](index, a1, a2, a3, a4, a5, a6);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iiiiiiii = (index, a1, a2, a3, a4, a5, a6, a7) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7);
+		return mod.Module['dynCall_iiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iiiiiiiii = (index, a1, a2, a3, a4, a5, a6, a7, a8) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8);
+		return mod.Module['dynCall_iiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iiiiiiiiii = (index, a1, a2, a3, a4, a5, a6, a7, a8, a9) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iiiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9);
+		return mod.Module['dynCall_iiiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iiiiiiiiiii = (index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iiiiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+		return mod.Module['dynCall_iiiiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iiijj = (index, a1, a2, a3, a4, a5, a6) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iiijj'](index, a1, a2, a3, a4, a5, a6);
+		return mod.Module['dynCall_iiijj'](index, a1, a2, a3, a4, a5, a6);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_iij = (index, a1, a2, a3) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_iij'](index, a1, a2, a3);
+		return mod.Module['dynCall_iij'](index, a1, a2, a3);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_ji = (index, a1) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		return Module['dynCall_ji'](index, a1);
+		return mod.Module['dynCall_ji'](index, a1);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_v = index => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_v'](index);
+		mod.Module['dynCall_v'](index);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_vi = (index, a1) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_vi'](index, a1);
+		mod.Module['dynCall_vi'](index, a1);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_vii = (index, a1, a2) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_vii'](index, a1, a2);
+		mod.Module['dynCall_vii'](index, a1, a2);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_viid = (index, a1, a2, a3) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_viid'](index, a1, a2, a3);
+		mod.Module['dynCall_viid'](index, a1, a2, a3);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_viidddddddd = (index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_viidddddddd'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
+		mod.Module['dynCall_viidddddddd'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_viii = (index, a1, a2, a3) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_viii'](index, a1, a2, a3);
+		mod.Module['dynCall_viii'](index, a1, a2, a3);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_viiii = (index, a1, a2, a3, a4) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_viiii'](index, a1, a2, a3, a4);
+		mod.Module['dynCall_viiii'](index, a1, a2, a3, a4);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_viiiii = (index, a1, a2, a3, a4, a5) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_viiiii'](index, a1, a2, a3, a4, a5);
+		mod.Module['dynCall_viiiii'](index, a1, a2, a3, a4, a5);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_viiiiii = (index, a1, a2, a3, a4, a5, a6) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_viiiiii'](index, a1, a2, a3, a4, a5, a6);
+		mod.Module['dynCall_viiiiii'](index, a1, a2, a3, a4, a5, a6);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_viiiiiiiii = (index, a1, a2, a3, a4, a5, a6, a7, a8, a9) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_viiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9);
+		mod.Module['dynCall_viiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 const invoke_vij = (index, a1, a2, a3) => {
-	const sp = stackSave();
+	const sp = exposed.stackSave();
 
 	try {
-		Module['dynCall_vij'](index, a1, a2, a3);
+		mod.Module['dynCall_vij'](index, a1, a2, a3);
 	}
 	catch (e) {
-		stackRestore(sp);
+		exposed.stackRestore(sp);
 
 		if (typeof e !== 'number' && e !== 'longjmp') { throw e; }
 
-		Module['setThrew'](1, 0);
+		mod.Module['setThrew'](1, 0);
 	}
 };
 
 
 export default {
-	stackRestore,
-	stackSave,
+	exposed,
 	invoke_dii,
 	invoke_i,
 	invoke_ii,

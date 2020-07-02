@@ -11,8 +11,15 @@ import PATH 	from './path.js';
 import FS 		from './fs.js';
 
 
+// Exposed to allow set/update in other modules.
+const exposed = {
+	// Set later in 'asm.js'.
+	_memalign: null
+};
+
+
 const stringToUTF8 = (str, outPtr, maxBytesToWrite) => 
-											 utils.stringToUTF8Array(str, memory.HEAPU8, outPtr, maxBytesToWrite);
+											 utils.stringToUTF8Array(str, memory.exposed.HEAPU8, outPtr, maxBytesToWrite);
 
 
 const SYSCALLS = {
@@ -58,31 +65,31 @@ const SYSCALLS = {
 			throw error;
 		}
 
-		memory.HEAP32[buf >> 2] 		 = stat.dev;
-		memory.HEAP32[buf + 4 >> 2]  = 0;
-		memory.HEAP32[buf + 8 >> 2]  = stat.ino;
-		memory.HEAP32[buf + 12 >> 2] = stat.mode;
-		memory.HEAP32[buf + 16 >> 2] = stat.nlink;
-		memory.HEAP32[buf + 20 >> 2] = stat.uid;
-		memory.HEAP32[buf + 24 >> 2] = stat.gid;
-		memory.HEAP32[buf + 28 >> 2] = stat.rdev;
-		memory.HEAP32[buf + 32 >> 2] = 0;
-		memory.HEAP32[buf + 36 >> 2] = stat.size;
-		memory.HEAP32[buf + 40 >> 2] = 4096;
-		memory.HEAP32[buf + 44 >> 2] = stat.blocks;
-		memory.HEAP32[buf + 48 >> 2] = stat.atime.getTime() / 1e3 | 0;
-		memory.HEAP32[buf + 52 >> 2] = 0;
-		memory.HEAP32[buf + 56 >> 2] = stat.mtime.getTime() / 1e3 | 0;
-		memory.HEAP32[buf + 60 >> 2] = 0;
-		memory.HEAP32[buf + 64 >> 2] = stat.ctime.getTime() / 1e3 | 0;
-		memory.HEAP32[buf + 68 >> 2] = 0;
-		memory.HEAP32[buf + 72 >> 2] = stat.ino;
+		memory.exposed.HEAP32[buf >> 2] 		 = stat.dev;
+		memory.exposed.HEAP32[buf + 4 >> 2]  = 0;
+		memory.exposed.HEAP32[buf + 8 >> 2]  = stat.ino;
+		memory.exposed.HEAP32[buf + 12 >> 2] = stat.mode;
+		memory.exposed.HEAP32[buf + 16 >> 2] = stat.nlink;
+		memory.exposed.HEAP32[buf + 20 >> 2] = stat.uid;
+		memory.exposed.HEAP32[buf + 24 >> 2] = stat.gid;
+		memory.exposed.HEAP32[buf + 28 >> 2] = stat.rdev;
+		memory.exposed.HEAP32[buf + 32 >> 2] = 0;
+		memory.exposed.HEAP32[buf + 36 >> 2] = stat.size;
+		memory.exposed.HEAP32[buf + 40 >> 2] = 4096;
+		memory.exposed.HEAP32[buf + 44 >> 2] = stat.blocks;
+		memory.exposed.HEAP32[buf + 48 >> 2] = stat.atime.getTime() / 1e3 | 0;
+		memory.exposed.HEAP32[buf + 52 >> 2] = 0;
+		memory.exposed.HEAP32[buf + 56 >> 2] = stat.mtime.getTime() / 1e3 | 0;
+		memory.exposed.HEAP32[buf + 60 >> 2] = 0;
+		memory.exposed.HEAP32[buf + 64 >> 2] = stat.ctime.getTime() / 1e3 | 0;
+		memory.exposed.HEAP32[buf + 68 >> 2] = 0;
+		memory.exposed.HEAP32[buf + 72 >> 2] = stat.ino;
 
 		return 0;
 	},
 
 	doMsync(addr, stream, len, flags) {
-		const buffer = new Uint8Array(memory.HEAPU8.subarray(addr, addr + len));
+		const buffer = new Uint8Array(memory.exposed.HEAPU8.subarray(addr, addr + len));
 
 		FS.msync(stream, buffer, 0, len, flags);
 	},
@@ -122,12 +129,12 @@ const SYSCALLS = {
 		}
 
 		const ret 		= FS.readlink(path);
-		const len 		= Math.min(bufsize, lengthBytesUTF8(ret));
-		const endChar = memory.HEAP8[buf + len];
+		const len 		= Math.min(bufsize, utils.lengthBytesUTF8(ret));
+		const endChar = memory.exposed.HEAP8[buf + len];
 
 		stringToUTF8(ret, buf, bufsize + 1);
 
-		memory.HEAP8[buf + len] = endChar;
+		memory.exposed.HEAP8[buf + len] = endChar;
 
 		return len;
 	},
@@ -174,9 +181,9 @@ const SYSCALLS = {
 		let ret = 0;
 
 		for (let i = 0; i < iovcnt; i++) {
-			const ptr  = memory.HEAP32[iov + i * 8 >> 2];
-			const len  = memory.HEAP32[iov + (i * 8 + 4) >> 2];
-			const curr = FS.read(stream, memory.HEAP8, ptr, len, offset);
+			const ptr  = memory.exposed.HEAP32[iov + i * 8 >> 2];
+			const len  = memory.exposed.HEAP32[iov + (i * 8 + 4) >> 2];
+			const curr = FS.read(stream, memory.exposed.HEAP8, ptr, len, offset);
 
 			if (curr < 0) { return -1; }
 
@@ -192,9 +199,9 @@ const SYSCALLS = {
 		let ret = 0;
 
 		for (let i = 0; i < iovcnt; i++) {
-			const ptr  = memory.HEAP32[iov + i * 8 >> 2];
-			const len  = memory.HEAP32[iov + (i * 8 + 4) >> 2];
-			const curr = FS.write(stream, memory.HEAP8, ptr, len, offset);
+			const ptr  = memory.exposed.HEAP32[iov + i * 8 >> 2];
+			const len  = memory.exposed.HEAP32[iov + (i * 8 + 4) >> 2];
+			const curr = FS.write(stream, memory.exposed.HEAP8, ptr, len, offset);
 
 			if (curr < 0) { return - 1; }
 
@@ -209,7 +216,7 @@ const SYSCALLS = {
 	get(varargs) {
 		SYSCALLS.varargs += 4;
 
-		return memory.HEAP32[SYSCALLS.varargs - 4 >> 2];
+		return memory.exposed.HEAP32[SYSCALLS.varargs - 4 >> 2];
 	},
 
 	getStr() {
@@ -336,7 +343,7 @@ const ___syscall140 = (which, varargs) => {
 		const offset 			= offset_low;
 
 		FS.llseek(stream, offset, whence);
-		memory.HEAP32[result >> 2] = stream.position;
+		memory.exposed.HEAP32[result >> 2] = stream.position;
 
 		if (stream.getdents && offset === 0 && whence === 0) {
 			stream.getdents = null;
@@ -405,7 +412,7 @@ const ___syscall180 = (which, varargs) => {
 		const zero 	 = SYSCALLS.getZero();
 		const offset = SYSCALLS.get64();
 
-		return FS.read(stream, memory.HEAP8, buf, count, offset);
+		return FS.read(stream, memory.exposed.HEAP8, buf, count, offset);
 	}
 	catch (error) {
 		return handleError(error);
@@ -422,7 +429,7 @@ const ___syscall181 = (which, varargs) => {
 		const zero 	 = SYSCALLS.getZero();
 		const offset = SYSCALLS.get64();
 
-		return FS.write(stream, memory.HEAP8, buf, count, offset);
+		return FS.write(stream, memory.exposed.HEAP8, buf, count, offset);
 	}
 	catch (error) {
 		return handleError(error);
@@ -441,7 +448,7 @@ const ___syscall183 = (which, varargs) => {
 		}
 
 		const cwd 						 = FS.cwd();
-		const cwdLengthInBytes = lengthBytesUTF8(cwd);
+		const cwdLengthInBytes = utils.lengthBytesUTF8(cwd);
 
 		if (size < cwdLengthInBytes + 1) {
 			return -ERRNO_CODES.ERANGE;
@@ -463,10 +470,10 @@ const ___syscall191 = (which, varargs) => {
 		const resource = SYSCALLS.get();
 		const rlim 		 = SYSCALLS.get();
 
-		memory.HEAP32[rlim >> 2]      =- 1;
-		memory.HEAP32[rlim + 4 >> 2]  =- 1;
-		memory.HEAP32[rlim + 8 >> 2]  =- 1;
-		memory.HEAP32[rlim + 12 >> 2] =- 1;
+		memory.exposed.HEAP32[rlim >> 2]      =- 1;
+		memory.exposed.HEAP32[rlim + 4 >> 2]  =- 1;
+		memory.exposed.HEAP32[rlim + 8 >> 2]  =- 1;
+		memory.exposed.HEAP32[rlim + 12 >> 2] =- 1;
 
 		return 0;
 	}
@@ -474,9 +481,6 @@ const ___syscall191 = (which, varargs) => {
 		return handleError(error);
 	}
 };
-
-// Set later in 'asm.js'.
-let _memalign;
 
 const ___syscall192 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
@@ -495,13 +499,13 @@ const ___syscall192 = (which, varargs) => {
 		let allocated = false;
 
 		if (fd === -1) {
-			ptr = _memalign(PAGE_SIZE, len);
+			ptr = exposed._memalign(PAGE_SIZE, len);
 
 			if (!ptr) {
 				return -ERRNO_CODES.ENOMEM;
 			}
 
-			utils._memset(ptr, 0, len);
+			utils.exposed._memset(ptr, 0, len);
 			allocated = true;
 		}
 		else {
@@ -511,7 +515,7 @@ const ___syscall192 = (which, varargs) => {
 				return -ERRNO_CODES.EBADF;
 			}
 
-			const res = FS.mmap(info, memory.HEAPU8, addr, len, off, prot, flags);
+			const res = FS.mmap(info, memory.exposed.HEAPU8, addr, len, off, prot, flags);
 
 			ptr 			= res.ptr;
 			allocated = res.allocated;
@@ -611,10 +615,10 @@ const ___syscall220 = (which, varargs) => {
 								 		8;
 			}
 
-			memory.HEAP32[dirp + pos >> 2] 		 = id;
-			memory.HEAP32[dirp + pos + 4 >> 2] = stream.position;
-			memory.HEAP16[dirp + pos + 8 >> 1] = 268;
-			memory.HEAP8[dirp + pos + 10 >> 0] = type;
+			memory.exposed.HEAP32[dirp + pos >> 2] 		 = id;
+			memory.exposed.HEAP32[dirp + pos + 4 >> 2] = stream.position;
+			memory.exposed.HEAP16[dirp + pos + 8 >> 1] = 268;
+			memory.exposed.HEAP8[dirp + pos + 10 >> 0] = type;
 
 			stringToUTF8(name, dirp + pos + 11, 256);
 			pos += 268;
@@ -662,7 +666,7 @@ const ___syscall221 = (which, varargs) => {
 				const arg 	 = SYSCALLS.get();
 				const offset = 0;
 
-				memory.HEAP16[arg + offset >> 1] = 2;
+				memory.exposed.HEAP16[arg + offset >> 1] = 2;
 
 				return 0;
 			};
@@ -694,7 +698,7 @@ const ___syscall3 = (which, varargs) => {
 		const buf 	 = SYSCALLS.get();
 		const count  = SYSCALLS.get();
 
-		return FS.read(stream, memory.HEAP8, buf, count);
+		return FS.read(stream, memory.exposed.HEAP8, buf, count);
 	}
 	catch (error) {
 		return handleError(error);
@@ -745,10 +749,10 @@ const ___syscall340 = (which, varargs) => {
 		const old_limit = SYSCALLS.get();
 
 		if (old_limit) {
-			memory.HEAP32[old_limit >> 2] 		 =- 1;
-			memory.HEAP32[old_limit + 4 >> 2]  =- 1;
-			memory.HEAP32[old_limit + 8 >> 2]  =- 1;
-			memory.HEAP32[old_limit + 12 >> 2] =- 1;
+			memory.exposed.HEAP32[old_limit >> 2] 		 =- 1;
+			memory.exposed.HEAP32[old_limit + 4 >> 2]  =- 1;
+			memory.exposed.HEAP32[old_limit + 8 >> 2]  =- 1;
+			memory.exposed.HEAP32[old_limit + 12 >> 2] =- 1;
 		}
 
 		return 0;
@@ -782,7 +786,7 @@ const ___syscall4 = (which, varargs) => {
 		const buf 	 = SYSCALLS.get();
 		const count  = SYSCALLS.get();
 
-		return FS.write(stream, memory.HEAP8, buf, count);
+		return FS.write(stream, memory.exposed.HEAP8, buf, count);
 	}
 	catch (error) {
 		return handleError(error);
@@ -840,7 +844,7 @@ const ___syscall54 = (which, varargs) => {
 
 				const argp = SYSCALLS.get();
 
-				memory.HEAP32[argp >> 2] = 0;
+				memory.exposed.HEAP32[argp >> 2] = 0;
 
 				return 0;
 			};
@@ -901,12 +905,12 @@ const ___syscall77 = (which, varargs) => {
 		const who 	= SYSCALLS.get();
 		const usage = SYSCALLS.get();
 
-		utils._memset(usage, 0, 136);
+		utils.exposed._memset(usage, 0, 136);
 
-		memory.HEAP32[usage >> 2] 		 = 1;
-		memory.HEAP32[usage + 4 >> 2]  = 2;
-		memory.HEAP32[usage + 8 >> 2]  = 3;
-		memory.HEAP32[usage + 12 >> 2] = 4;
+		memory.exposed.HEAP32[usage >> 2] 		 = 1;
+		memory.exposed.HEAP32[usage + 4 >> 2]  = 2;
+		memory.exposed.HEAP32[usage + 8 >> 2]  = 3;
+		memory.exposed.HEAP32[usage + 12 >> 2] = 4;
 
 		return 0;
 	}
@@ -964,7 +968,7 @@ const ___syscall91 = (which, varargs) => {
 			SYSCALLS.mappings[addr] = null;
 
 			if (info.allocated) {
-				utils._free(info.malloc);
+				utils.exposed._free(info.malloc);
 			}
 		}
 
@@ -1024,5 +1028,5 @@ export default {
 	___syscall85,
 	___syscall91,
 	___syscall94,
-	_memalign
+	exposed
 };

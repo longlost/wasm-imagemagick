@@ -1,7 +1,7 @@
 
 import {ERRNO_CODES} from './constants.js';
 import utils 			 	 from './utils.js';
-import {Module} 	 	 from './module.js';
+import mod 	 	 			 from './module.js';
 import runtime 		 	 from './runtime.js';
 import environment 	 from './environment.js';
 import fsShared 	 	 from './fs-shared.js';
@@ -53,12 +53,12 @@ const stackTrace = () => {
 
 
 const FS = {
-	root: 									 fsShared.root,
+	root: 									 fsShared.exposed.root,
 	mounts: 								 [],
 	streams: 								 fsShared.streams,
 	nextInode: 							 fsShared.nextInode,
 	nameTable: 							 fsShared.nameTable,
-	currentPath: 						 fsShared.currentPath,
+	currentPath: 						 fsShared.exposed.currentPath,
 	initialized: 						 false,
 	ignorePermissions: 			 fsShared.ignorePermissions,
 	trackingDelegate: 			 fsShared.trackingDelegate,
@@ -235,7 +235,7 @@ const FS = {
 		mount.root 			= mountRoot;
 
 		if (isRoot) {
-			FS.root = fsShared.root = mountRoot;
+			FS.root = fsShared.exposed.root = mountRoot;
 		}
 		else if (node) {
 			node.mounted = mount;
@@ -517,6 +517,7 @@ const FS = {
 	},
 
 	read(stream, buffer, offset, length, position) {
+
 		if (length < 0 || position < 0) {
 			throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
 		}
@@ -652,7 +653,7 @@ const FS = {
 			throw new FS.ErrnoError(error);
 		}
 
-		FS.currentPath = fsShared.currentPath = lookup.path;
+		FS.currentPath = fsShared.exposed.currentPath = lookup.path;
 	},
 
 	createDefaultDirectories() {
@@ -740,22 +741,22 @@ const FS = {
 	},
 
 	createStandardStreams() {
-		if (Module['stdin']) {
-			FS.createDevice('/dev', 'stdin', Module['stdin']);
+		if (mod.Module['stdin']) {
+			FS.createDevice('/dev', 'stdin', mod.Module['stdin']);
 		}
 		else {
 			FS.symlink('/dev/tty', '/dev/stdin');
 		}
 
-		if (Module['stdout']) {
-			FS.createDevice('/dev', 'stdout', null, Module['stdout']);
+		if (mod.Module['stdout']) {
+			FS.createDevice('/dev', 'stdout', null, mod.Module['stdout']);
 		}
 		else {
 			FS.symlink('/dev/tty', '/dev/stdout');
 		}
 
-		if (Module['stderr']) {
-			FS.createDevice('/dev', 'stderr', null, Module['stderr']);
+		if (mod.Module['stderr']) {
+			FS.createDevice('/dev', 'stderr', null, mod.Module['stderr']);
 		}
 		else {
 			FS.symlink('/dev/tty1', '/dev/stderr');
@@ -791,9 +792,9 @@ const FS = {
 		utils.assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 
 		FS.init.initialized = true;
-		Module['stdin']  = input  || Module['stdin'];
-		Module['stdout'] = output || Module['stdout'];
-		Module['stderr'] = error  || Module['stderr'];
+		mod.Module['stdin']  = input  || mod.Module['stdin'];
+		mod.Module['stdout'] = output || mod.Module['stdout'];
+		mod.Module['stderr'] = error  || mod.Module['stderr'];
 		FS.createStandardStreams();
 	},
 
@@ -1054,9 +1055,9 @@ const FS = {
 		if (typeof XMLHttpRequest !== 'undefined') {
 			throw new Error('Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.');
 		}
-		else if (Module['read']) {
+		else if (mod.Module['read']) {
 			try {
-				obj.contents  = utils.intArrayFromString(Module['read'](obj.url), true);
+				obj.contents  = utils.intArrayFromString(mod.Module['read'](obj.url), true);
 				obj.usedBytes = obj.contents.length;
 			}
 			catch (_) {
@@ -1318,7 +1319,7 @@ const FS = {
 
 			let handled = false;
 
-			Module['preloadPlugins'].forEach(plugin => {
+			mod.Module['preloadPlugins'].forEach(plugin => {
 				if (handled) { return; }
 
 				if (plugin['canHandle'](fullname)) {

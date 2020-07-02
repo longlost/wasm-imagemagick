@@ -5,65 +5,74 @@ import {
 	WASM_PAGE_SIZE
 } from './constants.js';
 
-import utils 		from './utils.js';
-import {Module} from './module.js';
+import utils 	 from './utils.js';
+import runtime from './runtime.js';
+import mod 		 from './module.js';
 
 
-const TOTAL_STACK  = Module['TOTAL_STACK']  || 5242880;
-let 	TOTAL_MEMORY = Module['TOTAL_MEMORY'] || 16777216;
+// Exposed to be set/updated in other modules.
+const exposed = {
+	DYNAMICTOP_PTR: 0,
+	HEAP8: 					null,
+	HEAP16: 	 			null,
+	HEAP32: 	 			null,
+	HEAPU8: 	 			null,
+	STATICTOP: 			0,
+	// Set after 'asm' in 'wasm-interface'.
+	_emscripten_replace_memory: null,
+	_malloc: 			null,
+	stackAlloc: 	null,
+	staticSealed: false
+};
+
+
+const TOTAL_STACK  = mod.Module['TOTAL_STACK']  || 5242880;
+let 	TOTAL_MEMORY = mod.Module['TOTAL_MEMORY'] || 16777216;
 
 
 if (TOTAL_MEMORY < TOTAL_STACK) {
-	utils.err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK = ' + TOTAL_STACK + ')');
+	utils.err(`TOTAL_MEMORY should be larger than TOTAL_STACK, was ${TOTAL_MEMORY}! (TOTAL_STACK = ${TOTAL_STACK})`);
 }
-
-let STATICTOP 		 = 0;
-let DYNAMICTOP_PTR = 0;
-
-// Set after 'asm' in 'wasm-interface'.
-let _emscripten_replace_memory;
-let _malloc;
-let stackAlloc;
 
 
 const staticAlloc = size => {
-	const ret = STATICTOP;
+	const ret = exposed.STATICTOP;
 
-	STATICTOP = STATICTOP + size + 15 & -16;
+	exposed.STATICTOP = exposed.STATICTOP + size + 15 & -16;
 
 	return ret;
 };
 
 
-let buffer, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
+let buffer, HEAPU16, HEAPU32, HEAPF32, HEAPF64;
 
 
 const _emscripten_memcpy_big = (dest, src, num) => {
-	HEAPU8.set(HEAPU8.subarray(src, src + num), dest);
+	exposed.HEAPU8.set(exposed.HEAPU8.subarray(src, src + num), dest);
 
 	return dest;
 };
 
 const updateGlobalBuffer = buf => {
-	Module['buffer'] = buffer = buf;
+	mod.Module['buffer'] = buffer = buf;
 };
 
 const updateGlobalBufferViews = () => {
-	Module['HEAP8'] 	= HEAP8 	= new Int8Array(buffer);
-	Module['HEAP16'] 	= HEAP16 	= new Int16Array(buffer);
-	Module['HEAP32'] 	= HEAP32 	= new Int32Array(buffer);
-	Module['HEAPU8'] 	= HEAPU8 	= new Uint8Array(buffer);
-	Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
-	Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
-	Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
-	Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
+	mod.Module['HEAP8'] 	= exposed.HEAP8  = new Int8Array(buffer);
+	mod.Module['HEAP16'] 	= exposed.HEAP16 = new Int16Array(buffer);
+	mod.Module['HEAP32'] 	= exposed.HEAP32 = new Int32Array(buffer);
+	mod.Module['HEAPU8'] 	= exposed.HEAPU8 = new Uint8Array(buffer);
+	mod.Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
+	mod.Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
+	mod.Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
+	mod.Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
 };
 
 const enlargeMemory = () => {
-	const PAGE_MULTIPLE = Module['usingWasm'] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
+	const PAGE_MULTIPLE = mod.Module['usingWasm'] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
 	const LIMIT 				= 2147483648 - PAGE_MULTIPLE;
 
-	if (HEAP32[DYNAMICTOP_PTR >> 2] > LIMIT) {
+	if (exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2] > LIMIT) {
 		return false;
 	}
 
@@ -73,7 +82,7 @@ const enlargeMemory = () => {
 
 	TOTAL_MEMORY = Math.max(TOTAL_MEMORY, MIN_TOTAL_MEMORY);
 
-	while (TOTAL_MEMORY < HEAP32[DYNAMICTOP_PTR >> 2]) {
+	while (TOTAL_MEMORY < exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2]) {
 
 		if (TOTAL_MEMORY <= 536870912) {
 			TOTAL_MEMORY = utils.alignUp(2 * TOTAL_MEMORY, PAGE_MULTIPLE);
@@ -83,7 +92,7 @@ const enlargeMemory = () => {
 		}
 	}
 
-	const replacement = Module['reallocBuffer'](TOTAL_MEMORY);
+	const replacement = mod.Module['reallocBuffer'](TOTAL_MEMORY);
 
 	if (!replacement || replacement.byteLength !== TOTAL_MEMORY) {
 		TOTAL_MEMORY = OLD_TOTAL_MEMORY;
@@ -98,16 +107,16 @@ const enlargeMemory = () => {
 };
 
 const dynamicAlloc = size => {
-	const ret = HEAP32[DYNAMICTOP_PTR >> 2];
+	const ret = exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2];
 	const end = ret + size + 15 & -16;
 
-	HEAP32[DYNAMICTOP_PTR >> 2] = end;
+	exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2] = end;
 
 	if (end >= TOTAL_MEMORY) {
 		var success = enlargeMemory();
 
 		if (!success) {
-			HEAP32[DYNAMICTOP_PTR >> 2] = ret;
+			exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2] = ret;
 
 			return 0;
 		}
@@ -127,16 +136,16 @@ const setValue = (ptr, value, type, noSafe) => {
 
 	switch (type) {
 		case 'i1':
-			HEAP8[ptr >> 0] = value;
+			exposed.HEAP8[ptr >> 0] = value;
 			break;
 		case'i8': 
-			HEAP8[ptr >> 0] = value;
+			exposed.HEAP8[ptr >> 0] = value;
 			break;
 		case 'i16':
-			HEAP16[ptr >> 1] = value;
+			exposed.HEAP16[ptr >> 1] = value;
 			break;
 		case 'i32':
-			HEAP32[ptr >> 2] = value;
+			exposed.HEAP32[ptr >> 2] = value;
 			break;
 		case 'i64':
 			tempDouble = value >>> 0;
@@ -150,8 +159,8 @@ const setValue = (ptr, value, type, noSafe) => {
 					0
 				)
 			]; 
-			HEAP32[ptr >> 2] 		 = tempI64[0];
-			HEAP32[ptr + 4 >> 2] = tempI64[1];
+			exposed.HEAP32[ptr >> 2] 		 = tempI64[0];
+			exposed.HEAP32[ptr + 4 >> 2] = tempI64[1];
 			break;
 		case 'float':
 			HEAPF32[ptr >> 2] = value;
@@ -220,8 +229,8 @@ const allocate = (slab, types, allocator, ptr) => {
 	}
 	else {
 		ret = [
-			typeof _malloc === 'function' ? _malloc : staticAlloc,
-			stackAlloc,
+			typeof exposed._malloc === 'function' ? exposed._malloc : staticAlloc,
+			exposed.stackAlloc,
 			staticAlloc,
 			dynamicAlloc
 		][
@@ -239,13 +248,13 @@ const allocate = (slab, types, allocator, ptr) => {
 		stop = ret + (size & ~3);
 
 		for (; ptr < stop; ptr += 4) {
-			HEAP32[ptr >> 2] = 0;
+			exposed.HEAP32[ptr >> 2] = 0;
 		}
 
 		stop = ret + size;
 
 		while (ptr < stop) {
-			HEAP8[ptr++ >> 0] = 0;
+			exposed.HEAP8[ptr++ >> 0] = 0;
 		}
 
 		return ret;
@@ -253,18 +262,10 @@ const allocate = (slab, types, allocator, ptr) => {
 
 	if (singleType === 'i8') {
 		if (slab.subarray || slab.slice) {
-
-
-
-			// HEAPU8.set(slab, ret);
-
-
-
-
-			
+			exposed.HEAPU8.set(slab, ret);			
 		}
 		else {
-			HEAPU8.set(new Uint8Array(slab), ret);
+			exposed.HEAPU8.set(new Uint8Array(slab), ret);
 		}
 
 		return ret;
@@ -303,7 +304,7 @@ const allocate = (slab, types, allocator, ptr) => {
 };
 
 
-const UTF8ToString = ptr => utils.UTF8ArrayToString(HEAPU8, ptr);
+const UTF8ToString = ptr => utils.UTF8ArrayToString(exposed.HEAPU8, ptr);
 
 
 const Pointer_stringify = (ptr, length) => {
@@ -314,7 +315,7 @@ const Pointer_stringify = (ptr, length) => {
 	let i = 0;
 
 	while (true) {
-		t = HEAPU8[ptr + i >> 0];
+		t = exposed.HEAPU8[ptr + i >> 0];
 		hasUtf |= t;
 
 		if (t == 0 && !length) {
@@ -338,7 +339,7 @@ const Pointer_stringify = (ptr, length) => {
 			let curr;
 
 			while (length > 0) {
-				curr 	= String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + Math.min(length, MAX_CHUNK)));
+				curr 	= String.fromCharCode.apply(String, exposed.HEAPU8.subarray(ptr, ptr + Math.min(length, MAX_CHUNK)));
 				ret 	= ret ? ret + curr : curr;
 
 				ptr 	 += MAX_CHUNK;
@@ -366,10 +367,10 @@ const abortOnCannotGrowMemory = () => {
 
 const allocateUTF8 = str => {
 	const size = utils.lengthBytesUTF8(str) + 1;
-	const ret  = _malloc(size);
+	const ret  = exposed._malloc(size);
 
 	if (ret) {
-		utils.stringToUTF8Array(str, HEAP8, ret, size);
+		utils.stringToUTF8Array(str, exposed.HEAP8, ret, size);
 	}
 
 	return ret;
@@ -377,50 +378,48 @@ const allocateUTF8 = str => {
 
 const allocateUTF8OnStack = str => {
 	const size = utils.lengthBytesUTF8(str) + 1;
-	const ret  = stackAlloc(size);
+	const ret  = exposed.stackAlloc(size);
 
-	utils.stringToUTF8Array(str, HEAP8, ret, size);
+	utils.stringToUTF8Array(str, exposed.HEAP8, ret, size);
 
 	return ret;
-}
-
-let staticSealed = false;
+};
 
 const getMemory = size => {
-	if (!staticSealed) { return; }
+	if (!exposed.staticSealed) { return; }
 
 	staticAlloc(size);
 
-	if (!runtimeInitialized) { return; }
+	if (!runtime.runtimeInitialized) { return; }
 
 	dynamicAlloc(size);
 
-	return _malloc(size);
+	return exposed._malloc(size);
 };
 
 const getTotalMemory = () => TOTAL_MEMORY;
 
 const writeArrayToMemory = (array, buffer) => {
-	HEAP8.set(array, buffer);
+	exposed.HEAP8.set(array, buffer);
 };
 
 const writeAsciiToMemory = (str, buffer, dontAddNull) => {
 	for (let i = 0; i < str.length; ++i) {
-		HEAP8[buffer++ >> 0] = str.charCodeAt(i);
+		exposed.HEAP8[buffer++ >> 0] = str.charCodeAt(i);
 	}
 
 	if (!dontAddNull) {
-		HEAP8[buffer >> 0] = 0;
+		exposed.HEAP8[buffer >> 0] = 0;
 	}
 };
 
 
-if (!Module['reallocBuffer']) {
-	Module['reallocBuffer'] = size => {
+if (!mod.Module['reallocBuffer']) {
+	mod.Module['reallocBuffer'] = size => {
 		let ret;
 
 		try {
-			const oldHEAP8 = HEAP8;
+			const oldHEAP8 = exposed.HEAP8;
 			ret 				 	 = new ArrayBuffer(size);
 			const temp 		 = new Int8Array(ret);
 
@@ -430,7 +429,7 @@ if (!Module['reallocBuffer']) {
 			return false;
 		}
 
-		const success = _emscripten_replace_memory(ret);
+		const success = exposed._emscripten_replace_memory(ret);
 
 		if (!success) { 
 			return false;
@@ -441,36 +440,31 @@ if (!Module['reallocBuffer']) {
 }
 
 
-if (Module['buffer']) {
-	buffer = Module['buffer'];
+if (mod.Module['buffer']) {
+	buffer = mod.Module['buffer'];
 }
 else {
 
 	if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
-		Module['wasmMemory'] = new WebAssembly.Memory({
+		mod.Module['wasmMemory'] = new WebAssembly.Memory({
 			'initial' : TOTAL_MEMORY / WASM_PAGE_SIZE
 		});
-		buffer = Module['wasmMemory'].buffer;
+		buffer = mod.Module['wasmMemory'].buffer;
 	}
 	else {
 		buffer = new ArrayBuffer(TOTAL_MEMORY);
 	}
 
-	Module['buffer'] = buffer;
+	mod.Module['buffer'] = buffer;
 }
+
+
+updateGlobalBufferViews();
 
 
 export default {
 	___assert_fail,
 	_emscripten_memcpy_big,
-	_emscripten_replace_memory,
-	_malloc,
-	DYNAMICTOP_PTR,
-	HEAP8,
-	HEAP16,
-	HEAP32,
-	HEAPU8,
-	STATICTOP,
 	TOTAL_STACK,
 	Pointer_stringify,
 	abortOnCannotGrowMemory,
@@ -479,11 +473,10 @@ export default {
 	allocateUTF8OnStack,
 	buffer,
 	enlargeMemory,
+	exposed,
 	getMemory,
 	getTotalMemory,
-	stackAlloc,
 	staticAlloc,
-	staticSealed,
 	updateGlobalBuffer,
 	updateGlobalBufferViews,
 	writeArrayToMemory,

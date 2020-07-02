@@ -6,13 +6,13 @@ import memory from './memory.js';
 const _sigaction = () => 0;
 
 const _sigaddset = (set, signum) => {
-	memory.HEAP32[set >> 2] = memory.HEAP32[set >> 2] | 1 << signum - 1;
+	memory.exposed.HEAP32[set >> 2] = memory.exposed.HEAP32[set >> 2] | 1 << signum - 1;
 
 	return 0;
 };
 
 const _sigemptyset = set => {
-	memory.HEAP32[set >> 2] = 0;
+	memory.exposed.HEAP32[set >> 2] = 0;
 
 	return 0;
 };

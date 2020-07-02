@@ -1,46 +1,74 @@
 
 // Use this module for applications in the browser.
 
+import {FS, callMain, mod} from './wasm-interface.js';
 
-import {FS, callMain} from './wasm-interface.js';
+const directory = '/pictures';
+
+mod.Module.onRuntimeInitialized = () => {
+  FS.mkdir(directory);
+  FS.chdir(directory);
+};
 
 
-FS.mkdir('/pictures');
-FS.currentPath = '/pictures';
+
+
+// // TESTING ONLY!!!
+// // Can get it to run but the .wasm file cannot resole the FS paths correctly,
+// // so the c code never finds the image files to process.
+// import {FS, Module} from './original-code-formatted.js';
+// const callMain = Module['callMain'];
+
+
+// const directory = '/pictures';
+
+
+// Module.onRuntimeInitialized = () => {
+//   FS.mkdir(directory);
+//   FS.currentPath = directory;
+// };
+
+// Can overwrite Module.locateFile to work with webpack if needed.
+
+
 
 
 const readAsArrayBuffer = file => {
 
-	const reader = new FileReader();
-	reader.readAsArrayBuffer(file);
+  const reader = new FileReader();
+  reader.readAsArrayBuffer(file);
 
-	return new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
 
-		reader.onload = () => {
-			resolve(reader.result);
-		};
+    reader.onload = () => {
+      resolve(reader.result);
+    };
 
-		reader.onerror = reject;
-	});
+    reader.onerror = reject;
+  });
 };
 
 
-const getProcessedFiles = () => {
-	const dir 	= FS.open('/pictures');	
-  const items = dir.node.contents;
+const getProcessedFiles = types => {
+  const dir        = FS.open(directory);  
+  const {contents} = dir.node;
 
-  const files = items.map(item => {
-  	const {destFilename} = item;
-  	const read = FS.readFile(destFilename);
 
-  	// Cleanup read file.
-    FS.unlink(destFilename);
 
-    // TODO:
-    //
-    // 			Get file.type somehow.
+  // TODO:
+  //
+  //      Align type with content key since Object.keys is not ordered
+  //      the same as incoming files or types.
 
-    return new File([read], destFilename, {type: file.type});
+
+
+  const files = Object.keys(contents).map((key, index) => {
+    const read = FS.readFile(key);
+
+    // Cleanup read file.
+    FS.unlink(key);
+
+    return new File([read], key, {type: types[index]});
   });
     
   return files;
@@ -49,38 +77,44 @@ const getProcessedFiles = () => {
 
 const magick = async (files, commands) => {
 
-  // Clean up exitCode.
-  exitCode = undefined;
-
   const bufferPromises = files.map(file => readAsArrayBuffer(file));
-  const buffers 			 = await Promise.all(bufferPromises);
+  const buffers        = await Promise.all(bufferPromises);  
 
-  // ImageMagick can work with more than one image at a time.
-  files.forEach((file, index) => {
-  	const buffer = buffers[index];
-		const data 	 = new Uint8Array(buffer);
+  try {
+    // ImageMagick can work with more than one image at a time.
+    files.forEach((file, index) => {
+      const buffer = buffers[index];
+      const data   = new Uint8Array(buffer);
 
-		FS.writeFile(file.name, data);
-  });
 
-  callMain(commands);
+      // FS.writeFile(file.name, data);
+      // console.log('writeFile name: ', `input_${file.name}`);
 
-  // Cleanup source files.
-  // 'mogrify' then output files have same name, so skip.
-  if (commands[0] !== 'mogrify') {
-  	files.forEach(file => {
-    	FS.unlink(file.name);
-  	});
+      FS.writeFile(`input_${file.name}`, data);
+
+    });
+
+
+    callMain(commands);
+
+    // const types     = files.map(file => file.type);    
+    // const processed = getProcessedFiles(types);
+
+    // return processed;
+
+    return;
   }
-    
-  const processed = getProcessedFiles();
+  catch (error) {
+    console.error(error);
 
-  if (exitCode === 0) {
-		return processed;
-	}
-	else {
-		throw new Error(`ImageMagick processing failed with exitCode: ${exitCode}`);
-	}
+    // Cleanup source files.
+    // 'mogrify' then output files have same name, so skip.
+    if (commands[0] !== 'mogrify') {
+      files.forEach(file => {
+        FS.unlink(file.name);
+      });
+    }
+  }
 
 };
 

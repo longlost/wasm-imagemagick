@@ -8,9 +8,9 @@ import {
 	PAGE_SIZE
 } from './constants.js';
 
-import utils 		from './utils.js';
-import memory 	from './memory.js';
-import {Module} from './module.js';
+import utils 	from './utils.js';
+import memory from './memory.js';
+import mod 		from './module.js';
 
 
 const ENV 					 = {};
@@ -31,17 +31,17 @@ function ___buildEnvironment(environ) {
 		ENV['PWD'] 	= '/';
 		ENV['HOME'] = '/home/web_user';
 		ENV['LANG'] = 'C.UTF-8';
-		ENV['_'] 		= Module['thisProgram'];
+		ENV['_'] 		= mod.Module['thisProgram'];
 
 		poolPtr = memory.getMemory(TOTAL_ENV_SIZE);
 		envPtr 	= memory.getMemory(MAX_ENV_VALUES * 4);
 
-		memory.HEAP32[envPtr >> 2]  = poolPtr;
-		memory.HEAP32[environ >> 2] = envPtr;
+		memory.exposed.HEAP32[envPtr >> 2]  = poolPtr;
+		memory.exposed.HEAP32[environ >> 2] = envPtr;
 	}
 	else {
-		envPtr 	= memory.HEAP32[environ >> 2];
-		poolPtr = memory.HEAP32[envPtr >> 2];
+		envPtr 	= memory.exposed.HEAP32[environ >> 2];
+		poolPtr = memory.exposed.HEAP32[envPtr >> 2];
 	}
 
 	let lines 		= [];
@@ -65,11 +65,11 @@ function ___buildEnvironment(environ) {
 	lines.forEach((line, index) => {
 		memory.writeAsciiToMemory(line, poolPtr);
 
-		memory.HEAP32[envPtr + index * ptrSize >> 2] = poolPtr;
+		memory.exposed.HEAP32[envPtr + index * ptrSize >> 2] = poolPtr;
 		poolPtr += line.length + 1;
 	});
 
-	memory.HEAP32[envPtr + lines.length * ptrSize >> 2] = 0;
+	memory.exposed.HEAP32[envPtr + lines.length * ptrSize >> 2] = 0;
 }
 
 const _emscripten_get_now = () => {
@@ -84,8 +84,8 @@ const _emscripten_get_now_is_monotonic = () => (
 );
 
 const ___setErrNo = value => {
-	if (Module['___errno_location']) {
-		memory.HEAP32[Module['___errno_location']() >> 2] = value;
+	if (mod.Module['___errno_location']) {
+		memory.exposed.HEAP32[mod.Module['___errno_location']() >> 2] = value;
 	}
 
 	return value;
@@ -105,8 +105,8 @@ const _clock_gettime = (clk_id, tp) => {
 		return - 1;
 	}
 
-	memory.HEAP32[tp >> 2] 		= now / 1e3 | 0;
-	memory.HEAP32[tp + 4 >> 2] = now % 1e3 * 1e3 * 1e3 | 0;
+	memory.exposed.HEAP32[tp >> 2] 		= now / 1e3 | 0;
+	memory.exposed.HEAP32[tp + 4 >> 2] = now % 1e3 * 1e3 * 1e3 | 0;
 
 	return 0;
 };
@@ -128,7 +128,7 @@ const __exit = status => {
 };
 
 const _abort = () => {
-	Module['abort']();
+	mod.Module['abort']();
 };
 
 // NOT an arrow function since it's being used as 
@@ -142,7 +142,7 @@ function _clock() {
 }
 
 const _longjmp = (env, value) => {
-	Module['setThrew'](env, value || 1);
+	mod.Module['setThrew'](env, value || 1);
 
 	throw 'longjmp';
 };
@@ -179,7 +179,7 @@ function _getenv(name) {
 	if (!ENV.hasOwnProperty(name)) { return 0; }
 
 	if (_getenv.ret) {
-		utils._free(_getenv.ret);
+		utils.exposed._free(_getenv.ret);
 	}
 
 	_getenv.ret = memory.allocateUTF8(ENV[name]);
@@ -213,12 +213,12 @@ const _usleep = useconds => {
 };
 
 const _nanosleep = (rqtp, rmtp) => {
-	const seconds 		= memory.HEAP32[rqtp >> 2];
-	const nanoseconds = memory.HEAP32[rqtp + 4 >> 2];
+	const seconds 		= memory.exposed.HEAP32[rqtp >> 2];
+	const nanoseconds = memory.exposed.HEAP32[rqtp + 4 >> 2];
 
 	if (rmtp !== 0) {
-		memory.HEAP32[rmtp >> 2] 		= 0;
-		memory.HEAP32[rmtp + 4 >> 2] = 0;
+		memory.exposed.HEAP32[rmtp >> 2] 		= 0;
+		memory.exposed.HEAP32[rmtp + 4 >> 2] = 0;
 	}
 
 	return _usleep(seconds * 1e6 + nanoseconds / 1e3);

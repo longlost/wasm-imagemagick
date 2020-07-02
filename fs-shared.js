@@ -18,11 +18,17 @@ const tracking = {
 	}
 };
 
-let currentPath 			= '/';
+
+// Exposed to be set/updated by other modules.
+const exposed = {
+	currentPath: '/',
+	root: 			 null
+};
+
+
 let ignorePermissions = true;
 let nextInode 				= 1;
 let nameTable 				= new Array(4096);
-let root 							= null;
 
 
 const genericErrors = {};
@@ -70,7 +76,7 @@ const flagsToPermissionString = flag => {
 	return perms;
 };
 
-const cwd = () => currentPath;
+const cwd = () => exposed.currentPath;
 
 const isBlkdev = mode => (mode & 61440) === 24576;
 
@@ -285,7 +291,7 @@ const lookupPath = (path, opts = {}) => {
 	);
 
 	const last 			 = parts.length - 1;
-	let current 		 = root;
+	let current 		 = exposed.root;
 	let current_path = '/';
 
 	for (var index = 0; index < parts.length; index++) {
@@ -914,6 +920,7 @@ const unlink = path => {
 
 
 export default {
+	exposed,
 	MAX_OPEN_FDS,
 	chmod,
 	chrdev_stream_ops,
@@ -921,7 +928,6 @@ export default {
 	closeStream,
 	createNode,
 	createStream,
-	currentPath,
 	cwd,
 	destroyNode,
 	flagModes,
@@ -960,7 +966,6 @@ export default {
 	readdir,
 	readlink,
 	rmdir,
-	root,
 	stat,
 	streams,
 	tracking,

@@ -9,11 +9,7 @@ import {
 	ENVIRONMENT_IS_NODE,
 } from './constants.js';
 
-import {
-	ExitStatus,
-	Module
-} from './module.js';
-
+import mod 						 from './module.js';
 import utils 					 from './utils.js';
 import memory 				 from './memory.js';
 import environment 		 from './environment.js';
@@ -25,27 +21,26 @@ import FS 						 from './fs.js';
 import integrateWasmJS from './integrate.js';
 
 
-memory.updateGlobalBufferViews();
 integrateWasmJS();
 
 
 const STATIC_BASE = 1024;
 
-memory.STATICTOP = STATIC_BASE + 1212304;
+memory.exposed.STATICTOP = STATIC_BASE + 1212304;
 
 runtime.__ATINIT__.push({
-	func: (function() {
-		asm.___emscripten_environ_constructor();
-	})
+	func() {
+		asm.exposed.___emscripten_environ_constructor();
+	}
 });
 
-Module['STATIC_BASE'] = STATIC_BASE;
-Module['STATIC_BUMP'] = 1212304;
+mod.Module['STATIC_BASE'] = STATIC_BASE;
+mod.Module['STATIC_BUMP'] = 1212304;
 
-memory.STATICTOP += 16;
-memory.STATICTOP += 16;
-memory.STATICTOP += 16;
-memory.STATICTOP += 16;
+memory.exposed.STATICTOP += 16;
+memory.exposed.STATICTOP += 16;
+memory.exposed.STATICTOP += 16;
+memory.exposed.STATICTOP += 16;
 
 
 if (ENVIRONMENT_IS_NODE) {
@@ -74,7 +69,7 @@ FS.staticInit();
 
 
 runtime.__ATINIT__.unshift(() => {
-	if (!Module['noFSInit'] && !FS.init.initialized) {
+	if (!mod.Module['noFSInit'] && !FS.init.initialized) {
 		FS.init();
 	}
 });
@@ -117,80 +112,83 @@ const alignMemory = (size, factor) => {
 	return Math.ceil(size / factor) * factor;
 };
 
-memory.DYNAMICTOP_PTR = memory.staticAlloc(4);
-STACK_BASE 		 = runtime.STACKTOP = alignMemory(memory.STATICTOP);
-STACK_MAX 		 = STACK_BASE + memory.TOTAL_STACK;
-DYNAMIC_BASE 	 = alignMemory(STACK_MAX);
+memory.exposed.DYNAMICTOP_PTR = memory.staticAlloc(4);
+STACK_BASE 	 = runtime.exposed.STACKTOP = alignMemory(memory.exposed.STATICTOP);
+STACK_MAX 	 = STACK_BASE + memory.TOTAL_STACK;
+DYNAMIC_BASE = alignMemory(STACK_MAX);
 
-memory.HEAP32[memory.DYNAMICTOP_PTR >> 2] = DYNAMIC_BASE;
+memory.exposed.HEAP32[memory.exposed.DYNAMICTOP_PTR >> 2] = DYNAMIC_BASE;
 
-memory.staticSealed = true;
+memory.exposed.staticSealed = true;
 
 
 asm.setAsm();
 
 
-const callMain = (...args) => {
+const callMain = args => {
 	runtime.ensureInitRuntime();
 
 	const argc = args.length + 1;
-	const argv = memory.stackAlloc((argc + 1) * 4);
+	const argv = memory.exposed.stackAlloc((argc + 1) * 4);
 
-	memory.HEAP32[argv >> 2] = memory.allocateUTF8OnStack(Module['thisProgram']);
+	memory.exposed.HEAP32[argv >> 2] = memory.allocateUTF8OnStack(mod.Module['thisProgram']);
 
 	for (let i = 1; i < argc; i++) {
-		memory.HEAP32[(argv >> 2) + i] = memory.allocateUTF8OnStack(args[i - 1]);
+		memory.exposed.HEAP32[(argv >> 2) + i] = memory.allocateUTF8OnStack(args[i - 1]);
 	}
 
-	memory.HEAP32[(argv >> 2) + argc] = 0;
+	memory.exposed.HEAP32[(argv >> 2) + argc] = 0;
 
 	try {
-		const ret = Module['_main'](argc, argv, 0);
+		const ret = mod.Module['_main'](argc, argv, 0);
 
 		runtime.exit(ret, true);
 	}
-	catch (e) {
-		if (e instanceof ExitStatus) {
+	catch (error) {
+
+		if (error instanceof mod.ExitStatus) {
 			return;
 		}
-		else if (e === 'SimulateInfiniteLoop') {
-			Module['noExitRuntime'] = true;
+		else if (error === 'SimulateInfiniteLoop') {
+			mod.Module['noExitRuntime'] = true;
 
 			return;
 		}
 		else {
-			let toLog = e;
+			let toLog = error;
 
-			if (e && typeof e === 'object' && e.stack) {
-				toLog = [e, e.stack];
+			if (error && typeof error === 'object' && error.stack) {
+				toLog = [error, error.stack];
 			}
 
 			utils.err(`exception thrown: ${toLog}`);
 
-			Module['quit'](1, e);
+			mod.Module['quit'](1, error);
 		}
 	}
 };
 
+mod.Module['callMain'] = callMain;
+mod.Module['abort'] 	 = utils.abort;
 
-Module['abort'] = utils.abort;
 
-
-if (Module['preInit']) {
-	if (typeof Module['preInit'] === 'function') {
-		Module['preInit'] = [Module['preInit']];
+if (mod.Module['preInit']) {
+	if (typeof mod.Module['preInit'] === 'function') {
+		mod.Module['preInit'] = [mod.Module['preInit']];
 	}
 
-	while (Module['preInit'].length > 0) {
-		Module['preInit'].pop()();
+	while (mod.Module['preInit'].length > 0) {
+		mod.Module['preInit'].pop()();
 	}
 }
 
-if (Module['noInitialRun']) {
-	runtime.shouldRunNow = false;
-}
+// runtime.exposed.shouldRunNow = true;
 
-Module['noExitRuntime'] = true;
+// if (mod.Module['noInitialRun']) {
+// 	runtime.exposed.shouldRunNow = false;
+// }
+
+mod.Module['noExitRuntime'] = true;
 
 
 runtime.run();
@@ -198,5 +196,6 @@ runtime.run();
 
 export {
 	FS,
-	callMain
+	callMain,
+	mod
 };

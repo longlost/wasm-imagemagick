@@ -1,6 +1,13 @@
 
-import utils 								from './utils.js';
-import {ExitStatus, Module} from './module.js';
+import utils from './utils.js';
+import mod 	 from './module.js';
+
+
+// Exposed to allow set/update from other modules.
+const exposed = {
+	STACKTOP: 		0,
+	shouldRunNow: false
+};
 
 
 const __ATPRERUN__ 		 = [];
@@ -10,7 +17,6 @@ const __ATEXIT__ 			 = [];
 const __ATPOSTRUN__ 	 = [];
 let runtimeInitialized = false;
 let runtimeExited 		 = false;
-let shouldRunNow 			 = true;
 
 
 const addOnPreRun = cb => {
@@ -32,10 +38,10 @@ const callRuntimeCallbacks = callbacks => {
 		if (typeof func === 'number') {
 
 			if (arg === undefined) {
-				Module['dynCall_v'](func);
+				mod.Module['dynCall_v'](func);
 			}
 			else {
-				Module['dynCall_vi'](func, arg);
+				mod.Module['dynCall_vi'](func, arg);
 			}
 		}
 		else {
@@ -45,13 +51,13 @@ const callRuntimeCallbacks = callbacks => {
 };
 
 const preRun = () => {
-	if (Module['preRun']) {
+	if (mod.Module['preRun']) {
 
-		if (typeof Module['preRun'] === 'function') { 
-			Module['preRun'] = [Module['preRun']];
+		if (typeof mod.Module['preRun'] === 'function') { 
+			mod.Module['preRun'] = [mod.Module['preRun']];
 
-			while (Module['preRun'].length) {
-				addOnPreRun(Module['preRun'].shift());
+			while (mod.Module['preRun'].length) {
+				addOnPreRun(mod.Module['preRun'].shift());
 			}
 		}
 
@@ -76,14 +82,14 @@ const exitRuntime = () => {
 };
 
 const postRun = () => {
-	if (Module['postRun']) {
+	if (mod.Module['postRun']) {
 
-		if (typeof Module['postRun'] === 'function') {
-			Module['postRun'] = [Module['postRun']];
+		if (typeof mod.Module['postRun'] === 'function') {
+			mod.Module['postRun'] = [mod.Module['postRun']];
 		}
 
-		while (Module['postRun'].length) {
-			addOnPostRun(Module['postRun'].shift());
+		while (mod.Module['postRun'].length) {
+			addOnPostRun(mod.Module['postRun'].shift());
 		}
 	}
 
@@ -95,69 +101,31 @@ const addOnPostRun = cb => {
 };
 
 
-let runDependencies 			= 0;
-let dependenciesFulfilled = null;
-
-
-dependenciesFulfilled = function runCaller() {
-	if (!Module['calledRun']) {
-		run();
-	}
-
-	if (!Module['calledRun']) {
-		dependenciesFulfilled = runCaller;
-	}
-};
-
-const addRunDependency = id => {
-	runDependencies++;
-
-	if (Module['monitorRunDependencies']) {
-		Module['monitorRunDependencies'](runDependencies);
-	}
-};
-
-const removeRunDependency = id => {
-	runDependencies--;
-
-	if (Module['monitorRunDependencies']) {
-		Module['monitorRunDependencies'](runDependencies);
-	}
-
-	if (runDependencies == 0) {
-
-		if (dependenciesFulfilled) {
-			const callback = dependenciesFulfilled;
-
-			dependenciesFulfilled = null;
-			callback();
-		}
-	}
-};
+let runDependencies = 0;
 
 const doRun = args => {
-	if (Module['calledRun']) { return; }
+	if (mod.Module['calledRun']) { return; }
 
-	Module['calledRun'] = true;
+	mod.Module['calledRun'] = true;
 
-	if (utils.ABORT) { return; }
+	if (utils.exposed.ABORT) { return; }
 
 	ensureInitRuntime();
 	preMain();
 
-	if (Module['onRuntimeInitialized']) {
-		Module['onRuntimeInitialized']();
+	if (mod.Module['onRuntimeInitialized']) {
+		mod.Module['onRuntimeInitialized']();
 	}
 
-	if (Module['_main'] && shouldRunNow) {
-		Module['callMain'](args);
+	if (mod.Module['_main'] && exposed.shouldRunNow) {
+		mod.Module['callMain'](args);
 	}
 
 	postRun();
 };
 
 const run = args => {
-	args = args || Module['arguments'];
+	args = args || mod.Module['arguments'];
 
 	if (runDependencies > 0) { return; }
 
@@ -165,15 +133,15 @@ const run = args => {
 
 	if (runDependencies > 0) { return; }
 
-	if (Module['calledRun']) { return; }	
+	if (mod.Module['calledRun']) { return; }	
 
-	if (Module['setStatus']) {
-		Module['setStatus']('Running...');
+	if (mod.Module['setStatus']) {
+		mod.Module['setStatus']('Running...');
 
 		setTimeout(() => {
 
 			setTimeout(() => {
-				Module['setStatus']('');
+				mod.Module['setStatus']('');
 			}, 1);
 
 			doRun(args);
@@ -184,22 +152,61 @@ const run = args => {
 	}
 };
 
-Module['run'] = run;
-
-let STACKTOP = 0;
+mod.Module['run'] = run;
 
 const exit = (status, implicit) => {
-	if (implicit && Module['noExitRuntime'] && status === 0) { return; }
+	if (implicit && mod.Module['noExitRuntime'] && status === 0) { return; }
 
-	if (!Module['noExitRuntime']) {
-		utils.ABORT 		 = true;
-		utils.EXITSTATUS = status;
-		STACKTOP 	 			 = 0;
+	if (!mod.Module['noExitRuntime']) {
+		utils.exposed.ABORT 		 = true;
+		utils.exposed.EXITSTATUS = status;
+		exposed.STACKTOP 				 = 0;
 
 		exitRuntime();
 	}
 
-	Module['quit'](status, new ExitStatus(status));
+	mod.Module['quit'](status, new mod.ExitStatus(status));
+};
+
+
+let dependenciesFulfilled = null;
+
+
+dependenciesFulfilled = function runCaller() {
+	if (!mod.Module['calledRun']) {
+		run();
+	}
+
+	if (!mod.Module['calledRun']) {
+		dependenciesFulfilled = runCaller;
+	}
+};
+
+const addRunDependency = id => {
+	runDependencies++;
+
+	if (mod.Module['monitorRunDependencies']) {
+		mod.Module['monitorRunDependencies'](runDependencies);
+	}
+};
+
+const removeRunDependency = id => {
+	runDependencies--;
+
+	if (mod.Module['monitorRunDependencies']) {
+		mod.Module['monitorRunDependencies'](runDependencies);
+	}
+
+	if (runDependencies == 0) {
+
+		if (dependenciesFulfilled) {
+			const callback = dependenciesFulfilled;
+
+			dependenciesFulfilled = null;
+
+			callback();
+		}
+	}
 };
 
 
@@ -207,12 +214,11 @@ export default {
 	__ATEXIT__,
 	__ATINIT__,
 	__ATMAIN__,
-	STACKTOP,
 	addRunDependency,
 	ensureInitRuntime,
 	exit,
+	exposed,
 	removeRunDependency,
 	run,
-	runtimeInitialized,
-	shouldRunNow
+	runtimeInitialized
 };
