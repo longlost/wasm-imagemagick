@@ -446,7 +446,7 @@ const MEMFS = {
 				}
 
 				allocated = true;
-				ptr 			= memory._malloc(length);
+				ptr 			= memory.exposed._malloc(length);
 
 				if (!ptr) {
 					throw new utils.ErrnoError(ERRNO_CODES.ENOMEM);

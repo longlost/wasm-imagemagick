@@ -2,9 +2,15 @@
 
 import {ERRNO_CODES, ERRNO_MESSAGES} from './constants.js';
 
-// Set after 'asm' in 'wasm-interface.js'.
-let _free;	 // Used in 'syscall.js' and 'environment.js' files.
-let _memset; // Used in 'syscall.js' and 'time.js' files.
+
+// Exposed to be set/updated in other modules.
+const exposed = {
+	ABORT: 			false,
+	EXITSTATUS: 0,
+	// Set after 'setAsm' called 'asm'.
+	_free: 	 null, // Used in 'syscall.js' and 'environment.js' files.
+	_memset: null  // Used in 'syscall.js' and 'time.js' files.
+};
 
 
 const ErrnoError = function(errno, node) {
@@ -42,9 +48,6 @@ const out = console.log.bind(console);
 const err = console.warn.bind(console);
 
 
-let ABORT 		 = false;
-let EXITSTATUS = 0;
-
 const abort = what => {
 
 	if (what !== undefined) {
@@ -57,8 +60,8 @@ const abort = what => {
 		what = '';
 	}
 
-	ABORT 		 = true;
-	EXITSTATUS = 1;
+	exposed.ABORT 		 = true;
+	exposed.EXITSTATUS = 1;
 
 	throw `abort(${what}). Build with -s ASSERTIONS=1 for more info.`;
 };
@@ -285,16 +288,13 @@ const UTF8ArrayToString = (u8Array, idx) => {
 };
 
 
-export default {
-	_free,
-	_memset,
-	ABORT,
-	EXITSTATUS,
+export default {	
 	ErrnoError,
 	abort,
 	alignUp,
 	assert,
 	err,
+	exposed,
 	getDevice,
 	intArrayFromString,
 	lengthBytesUTF8,

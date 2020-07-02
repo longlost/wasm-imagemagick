@@ -61,7 +61,10 @@ if (ENVIRONMENT_IS_NODE) {
 		var ret;
 
 		if (!nodeFS) {
-			nodeFS = require('fs');
+
+			const bundlerIgnoredRequire = m => eval('require')(m);
+
+			nodeFS = bundlerIgnoredRequire('fs');
 		}
 
 		if (!nodePath) {
@@ -3001,10 +3004,10 @@ var NODEFS = {
 	}),
 
 	flagsForNode: (function(flags) {
-		flags & =~2097152;
-		flags & =~2048;
-		flags & =~32768;
-		flags & =~524288;
+		flags &= ~2097152;
+		flags &= ~2048;
+		flags &= ~32768;
+		flags &= ~524288;
 
 		var newFlags = 0;
 
@@ -4623,6 +4626,7 @@ var FS = {
 			throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
 		}
 
+
 		flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
 		mode  = typeof mode === 'undefined' ? 438 : mode;
 
@@ -5039,8 +5043,12 @@ var FS = {
 			});
 		}
 		else if (ENVIRONMENT_IS_NODE) {
+
+			const bundlerIgnoredRequire = m => eval('require')(m);
+
+
 			random_device = (function() {
-				return require('crypto')['randomBytes'](1)[0];
+				return bundlerIgnoredRequire('crypto')['randomBytes'](1)[0];
 			});
 		}
 		else {
@@ -7898,7 +7906,10 @@ __ATEXIT__.push((function() {
 }));
 
 if (ENVIRONMENT_IS_NODE) {
-	var fs 					= require('fs');
+
+	const bundlerIgnoredRequire = m => eval('require')(m);
+
+	var fs 					= bundlerIgnoredRequire('fs');
 	var NODEJS_PATH = require('path');
 
 	NODEFS.staticInit();
@@ -8443,6 +8454,7 @@ var asm = Module['asm'](Module.asmGlobalArg, Module.asmLibraryArg, buffer);
 
 Module['asm'] = asm;
 
+
 var ___emscripten_environ_constructor = Module['___emscripten_environ_constructor'] = (function() {
 	return Module['asm']['___emscripten_environ_constructor'].apply(null, arguments);
 });
@@ -8783,14 +8795,21 @@ if (Module['preInit']) {
 	}
 }
 
-var shouldRunNow = true;
 
-if (Module['noInitialRun']) {
-	shouldRunNow = false;
-}
+var shouldRunNow = false;
+
+// var shouldRunNow = true;
+
+// if (Module['noInitialRun']) {
+// 	shouldRunNow = false;
+// }
 
 Module['noExitRuntime'] = true;
 
 run();
 
 
+export {
+	FS,
+	Module
+};
