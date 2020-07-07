@@ -328,6 +328,7 @@ const EXPANSION_RULES_2 = {
 
 
 const _strftime = (s, maxsize, format, tm) => {
+
 	const tm_zone = memory.exposed.HEAP32[tm + 40 >> 2];
 
 	const date = {

@@ -295,6 +295,10 @@ const handleError = error => {
 const ___syscall10 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall10 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const path = SYSCALLS.getStr();
 
@@ -310,6 +314,10 @@ const ___syscall10 = (which, varargs) => {
 const ___syscall114 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall114 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		utils.abort('cannot wait on child processes');
 	}
@@ -320,6 +328,10 @@ const ___syscall114 = (which, varargs) => {
 
 const ___syscall118 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall118 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		SYSCALLS.getStreamFromFD();
@@ -333,6 +345,10 @@ const ___syscall118 = (which, varargs) => {
 
 const ___syscall140 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall140 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const stream 			= SYSCALLS.getStreamFromFD();
@@ -359,6 +375,10 @@ const ___syscall140 = (which, varargs) => {
 const ___syscall145 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall145 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
 		const iov 	 = SYSCALLS.get();
@@ -373,6 +393,10 @@ const ___syscall145 = (which, varargs) => {
 
 const ___syscall146 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall146 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
@@ -389,6 +413,10 @@ const ___syscall146 = (which, varargs) => {
 const ___syscall15 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall15 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const path = SYSCALLS.getStr();
 		const mode = SYSCALLS.get();
@@ -404,6 +432,10 @@ const ___syscall15 = (which, varargs) => {
 
 const ___syscall180 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall180 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
@@ -422,6 +454,10 @@ const ___syscall180 = (which, varargs) => {
 const ___syscall181 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall181 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
 		const buf 	 = SYSCALLS.get();
@@ -438,6 +474,10 @@ const ___syscall181 = (which, varargs) => {
 
 const ___syscall183 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall183 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const buf  = SYSCALLS.get();
@@ -466,6 +506,10 @@ const ___syscall183 = (which, varargs) => {
 const ___syscall191 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall191 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const resource = SYSCALLS.get();
 		const rlim 		 = SYSCALLS.get();
@@ -484,6 +528,10 @@ const ___syscall191 = (which, varargs) => {
 
 const ___syscall192 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall192 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const addr 	= SYSCALLS.get();
@@ -539,6 +587,10 @@ const ___syscall192 = (which, varargs) => {
 const ___syscall195 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall195 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const path = SYSCALLS.getStr();
 		const buf  = SYSCALLS.get();
@@ -552,6 +604,10 @@ const ___syscall195 = (which, varargs) => {
 
 const ___syscall197 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall197 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
@@ -568,6 +624,10 @@ const ___syscall197 = (which, varargs) => {
 const ___syscall20 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall20 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const PROCINFO = {ppid: 1, pid: 42, sid: 42, pgid: 42};
 
@@ -580,6 +640,10 @@ const ___syscall20 = (which, varargs) => {
 
 const ___syscall220 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall220 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
@@ -633,6 +697,10 @@ const ___syscall220 = (which, varargs) => {
 
 const ___syscall221 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall221 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
@@ -693,6 +761,10 @@ const ___syscall221 = (which, varargs) => {
 const ___syscall3 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall3 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
 		const buf 	 = SYSCALLS.get();
@@ -707,6 +779,10 @@ const ___syscall3 = (which, varargs) => {
 
 const ___syscall324 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall324 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
@@ -728,6 +804,10 @@ const ___syscall324 = (which, varargs) => {
 const ___syscall33 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall33 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const path 	= SYSCALLS.getStr();
 		const amode = SYSCALLS.get();
@@ -741,6 +821,10 @@ const ___syscall33 = (which, varargs) => {
 
 const ___syscall340 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall340 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const pid 			= SYSCALLS.get();
@@ -765,6 +849,10 @@ const ___syscall340 = (which, varargs) => {
 const ___syscall38 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall38 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const old_path = SYSCALLS.getStr();
 		const new_path = SYSCALLS.getStr();
@@ -781,6 +869,10 @@ const ___syscall38 = (which, varargs) => {
 const ___syscall4 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall4 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
 		const buf 	 = SYSCALLS.get();
@@ -795,6 +887,10 @@ const ___syscall4 = (which, varargs) => {
 
 const ___syscall5 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall5 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const pathname = SYSCALLS.getStr();
@@ -811,6 +907,10 @@ const ___syscall5 = (which, varargs) => {
 
 const ___syscall54 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall54 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
@@ -886,6 +986,10 @@ const ___syscall54 = (which, varargs) => {
 const ___syscall6 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall16 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const stream = SYSCALLS.getStreamFromFD();
 
@@ -900,6 +1004,10 @@ const ___syscall6 = (which, varargs) => {
 
 const ___syscall77 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall77 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const who 	= SYSCALLS.get();
@@ -922,6 +1030,10 @@ const ___syscall77 = (which, varargs) => {
 const ___syscall83 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall83 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const target 	 = SYSCALLS.getStr();
 		const linkpath = SYSCALLS.getStr();
@@ -938,6 +1050,10 @@ const ___syscall83 = (which, varargs) => {
 const ___syscall85 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall85 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		const path 		= SYSCALLS.getStr();
 		const buf 		= SYSCALLS.get();
@@ -952,6 +1068,10 @@ const ___syscall85 = (which, varargs) => {
 
 const ___syscall91 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall91 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const addr = SYSCALLS.get();
@@ -981,6 +1101,10 @@ const ___syscall91 = (which, varargs) => {
 
 const ___syscall94 = (which, varargs) => {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall94 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		const fd 	 = SYSCALLS.get();

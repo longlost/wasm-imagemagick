@@ -1,11 +1,7 @@
 
 
-// TODO:
-//
-// 		Update webpack to v5.x and change module extentions to .mjs for use in Node.
-
-
 import {
+	ALLOC_STATIC,
 	ENVIRONMENT_IS_NODE,
 } from './constants.js';
 
@@ -14,9 +10,11 @@ import utils 					 from './utils.js';
 import memory 				 from './memory.js';
 import environment 		 from './environment.js';
 import runtime 				 from './runtime.js';
+import time 					 from './time.js';
 import asm 						 from './asm.js';
 import TTY 						 from './tty.js';
 import NODEFS 				 from './nodefs.js';
+import fsShared 			 from './fs-shared.js';
 import FS 						 from './fs.js';
 import integrateWasmJS from './integrate.js';
 
@@ -41,6 +39,9 @@ memory.exposed.STATICTOP += 16;
 memory.exposed.STATICTOP += 16;
 memory.exposed.STATICTOP += 16;
 memory.exposed.STATICTOP += 16;
+
+
+time.exposed.___tm_timezone = memory.allocate(utils.intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
 
 
 if (ENVIRONMENT_IS_NODE) {
@@ -75,7 +76,7 @@ runtime.__ATINIT__.unshift(() => {
 });
 
 runtime.__ATMAIN__.push(() => {
-	FS.ignorePermissions = false;
+	FS.ignorePermissions = fsShared.exposed.ignorePermissions = false;
 });
 
 runtime.__ATEXIT__.push(() => {
@@ -125,8 +126,20 @@ memory.exposed.staticSealed = true;
 asm.setAsm();
 
 
-const callMain = args => {
+runtime.exposed.dependenciesFulfilled = function runCaller() {
+	if (!mod.Module['calledRun']) {
+		runtime.run();
+	}
+
+	if (!mod.Module['calledRun']) {
+		exposed.dependenciesFulfilled = runCaller;
+	}
+};
+
+
+const callMain = (args = []) => {
 	runtime.ensureInitRuntime();
+
 
 	const argc = args.length + 1;
 	const argv = memory.exposed.stackAlloc((argc + 1) * 4);

@@ -5,8 +5,10 @@ import mod 	 from './module.js';
 
 // Exposed to allow set/update from other modules.
 const exposed = {
-	STACKTOP: 		0,
-	shouldRunNow: false
+	STACKTOP: 						 0,
+	dependenciesFulfilled: null,
+	runtimeInitialized: 	 false,
+	shouldRunNow: 				 false
 };
 
 
@@ -15,7 +17,6 @@ const __ATINIT__ 			 = [];
 const __ATMAIN__ 			 = [];
 const __ATEXIT__ 			 = [];
 const __ATPOSTRUN__ 	 = [];
-let runtimeInitialized = false;
 let runtimeExited 		 = false;
 
 
@@ -66,9 +67,10 @@ const preRun = () => {
 };
 
 const ensureInitRuntime = () => {
-	if (runtimeInitialized) { return; }
+	if (exposed.runtimeInitialized) { return; }
 
-	runtimeInitialized = true;
+	exposed.runtimeInitialized = true;
+
 	callRuntimeCallbacks(__ATINIT__);
 };
 
@@ -168,20 +170,6 @@ const exit = (status, implicit) => {
 	mod.Module['quit'](status, new mod.ExitStatus(status));
 };
 
-
-let dependenciesFulfilled = null;
-
-
-dependenciesFulfilled = function runCaller() {
-	if (!mod.Module['calledRun']) {
-		run();
-	}
-
-	if (!mod.Module['calledRun']) {
-		dependenciesFulfilled = runCaller;
-	}
-};
-
 const addRunDependency = id => {
 	runDependencies++;
 
@@ -197,12 +185,12 @@ const removeRunDependency = id => {
 		mod.Module['monitorRunDependencies'](runDependencies);
 	}
 
-	if (runDependencies == 0) {
+	if (runDependencies === 0) {
 
-		if (dependenciesFulfilled) {
-			const callback = dependenciesFulfilled;
+		if (exposed.dependenciesFulfilled) {
+			const callback = exposed.dependenciesFulfilled;
 
-			dependenciesFulfilled = null;
+			exposed.dependenciesFulfilled = null;
 
 			callback();
 		}
@@ -219,6 +207,5 @@ export default {
 	exit,
 	exposed,
 	removeRunDependency,
-	run,
-	runtimeInitialized
+	run
 };
