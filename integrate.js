@@ -202,6 +202,8 @@ const integrateWasmJS = () => {
 			}
 		}		
 
+		runtime.addRunDependency('wasm-instantiate');
+
 		// const instantiateArrayBuffer = async receiver => {
 		// 	try {
 		// 		const binary = await getBinaryPromise();

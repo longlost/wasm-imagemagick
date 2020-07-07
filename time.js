@@ -6,6 +6,7 @@ import memory 				from './memory.js';
 
 // Exposed to be set/updated in other modules.
 const exposed = {
+	___tm_timezone: 0,
 	// Set in 'setAsm' function in 'asm.js'.
 	__get_daylight: null,
 	__get_timezone: null,
@@ -22,7 +23,6 @@ const _gettimeofday = ptr => {
 	return 0;
 };
 
-const ___tm_timezone = memory.allocate(utils.intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
 
 const _gmtime_r = (time, tmPtr) => {
 	const date = new Date(memory.exposed.HEAP32[time >> 2] * 1e3);
@@ -41,7 +41,7 @@ const _gmtime_r = (time, tmPtr) => {
 	const yday 	= (date.getTime() - start) / (1e3 * 60 * 60 * 24) | 0;
 
 	memory.exposed.HEAP32[tmPtr + 28 >> 2] = yday;
-	memory.exposed.HEAP32[tmPtr + 40 >> 2] = ___tm_timezone;
+	memory.exposed.HEAP32[tmPtr + 40 >> 2] = exposed.___tm_timezone;
 
 	return tmPtr;
 };

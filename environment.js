@@ -8,9 +8,10 @@ import {
 	PAGE_SIZE
 } from './constants.js';
 
-import utils 	from './utils.js';
-import memory from './memory.js';
-import mod 		from './module.js';
+import utils 	 from './utils.js';
+import memory  from './memory.js';
+import mod 		 from './module.js';
+import runtime from './runtime.js';
 
 
 const ENV 					 = {};
@@ -84,6 +85,7 @@ const _emscripten_get_now_is_monotonic = () => (
 );
 
 const ___setErrNo = value => {
+
 	if (mod.Module['___errno_location']) {
 		memory.exposed.HEAP32[mod.Module['___errno_location']() >> 2] = value;
 	}
@@ -92,6 +94,7 @@ const ___setErrNo = value => {
 };
 
 const _clock_gettime = (clk_id, tp) => {
+
 	let now;
 
 	if (clk_id === 0) {
@@ -105,7 +108,7 @@ const _clock_gettime = (clk_id, tp) => {
 		return - 1;
 	}
 
-	memory.exposed.HEAP32[tp >> 2] 		= now / 1e3 | 0;
+	memory.exposed.HEAP32[tp >> 2] 		 = now / 1e3 | 0;
 	memory.exposed.HEAP32[tp + 4 >> 2] = now % 1e3 * 1e3 * 1e3 | 0;
 
 	return 0;
@@ -124,7 +127,7 @@ const ___map_file = (pathname, size) => {
 const ___unlock = () => {};
 
 const __exit = status => {
-	exit(status);
+	runtime.exit(status);
 };
 
 const _abort = () => {
@@ -217,7 +220,7 @@ const _nanosleep = (rqtp, rmtp) => {
 	const nanoseconds = memory.exposed.HEAP32[rqtp + 4 >> 2];
 
 	if (rmtp !== 0) {
-		memory.exposed.HEAP32[rmtp >> 2] 		= 0;
+		memory.exposed.HEAP32[rmtp >> 2] 		 = 0;
 		memory.exposed.HEAP32[rmtp + 4 >> 2] = 0;
 	}
 
@@ -231,6 +234,7 @@ const _raise = sig => {
 };
 
 const _sysconf = name => {
+
 	switch(name) {
 		case 30:
 			return PAGE_SIZE;

@@ -239,6 +239,7 @@ moduleOverrides = undefined;
 var STACK_ALIGN = 16;
 
 function staticAlloc(size) {
+
 	var ret = STATICTOP;
 
 	STATICTOP = STATICTOP + size + 15 & -16;
@@ -247,6 +248,7 @@ function staticAlloc(size) {
 }
 
 function dynamicAlloc(size) {
+
 	var ret = HEAP32[DYNAMICTOP_PTR >> 2];
 	var end = ret + size + 15 & -16;
 
@@ -371,6 +373,7 @@ var ALLOC_STATIC = 2;
 var ALLOC_NONE 	 = 4;
 
 function allocate(slab, types, allocator, ptr) {
+
 	var zeroinit;
 	var size;
 
@@ -390,6 +393,7 @@ function allocate(slab, types, allocator, ptr) {
 		ret = ptr;
 	}
 	else {
+
 		ret = [
 			typeof _malloc === 'function' ? _malloc : staticAlloc,
 			stackAlloc,
@@ -399,6 +403,7 @@ function allocate(slab, types, allocator, ptr) {
 			allocator === undefined ? ALLOC_STATIC : allocator
 		](Math.max(size, singleType ? 1 : types.length));
 	}
+
 
 	if (zeroinit) {
 		var stop;
@@ -480,43 +485,40 @@ function Pointer_stringify(ptr, length) {
 	var t;
 	var i = 0;
 
-	while (1) {
+
+	while(1) {
 		t = HEAPU8[ptr + i >> 0];
 		hasUtf |= t;
 
-		if (t == 0 && !length) {
-			break;
-		}
+		if (t == 0 && !length) { break; }
 
 		i++;
 
-		if (length && i == length) {
-			break;
-		}
-
-		if (!length) {
-			length = i;
-		}
-
-		var ret = '';
-
-		if (hasUtf < 128) {
-			var MAX_CHUNK = 1024;
-			var curr;
-
-			while (length > 0) {
-				curr 	= String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + Math.min(length, MAX_CHUNK)));
-				ret 	= ret ? ret + curr : curr;
-
-				ptr 	 += MAX_CHUNK;
-				length -= MAX_CHUNK;
-			}
-
-			return ret;
-		}
-
-		return UTF8ToString(ptr);
+		if (length && i == length) { break; }
 	}
+
+	if (!length) {
+		length = i;
+	}
+
+	var ret = '';
+
+	if (hasUtf < 128) {
+		var MAX_CHUNK = 1024;
+		var curr;
+
+		while (length > 0) {
+			curr 	= String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + Math.min(length, MAX_CHUNK)));
+			ret 	= ret ? ret + curr : curr;
+
+			ptr 	 += MAX_CHUNK;
+			length -= MAX_CHUNK;
+		}
+
+		return ret;
+	}
+
+	return UTF8ToString(ptr);
 }
 
 var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
@@ -892,6 +894,7 @@ if (TOTAL_MEMORY < TOTAL_STACK) {
 	err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK = ' + TOTAL_STACK + ')');
 }
 
+
 if (Module['buffer']) {
 	buffer = Module['buffer'];
 }
@@ -910,7 +913,9 @@ else {
 	Module['buffer'] = buffer;
 }
 
+
 updateGlobalBufferViews();
+
 
 function getTotalMemory() {
 	return TOTAL_MEMORY;
@@ -970,6 +975,7 @@ function ensureInitRuntime() {
 	if (runtimeInitialized) { return; }
 
 	runtimeInitialized = true;
+
 	callRuntimeCallbacks(__ATINIT__);
 }
 
@@ -1058,6 +1064,7 @@ function removeRunDependency(id) {
 			var callback = dependenciesFulfilled;
 
 			dependenciesFulfilled = null;
+
 			callback();
 		}
 	}
@@ -1160,7 +1167,89 @@ function integrateWasmJS() {
 		}));
 	}
 
-	function doNativeWasm(global, env, providedBuffer) {
+	// function doNativeWasm(global, env, providedBuffer) {
+
+	// 	if (typeof WebAssembly !== 'object') {
+	// 		err('no native wasm support detected');
+
+	// 		return false;
+	// 	}
+
+	// 	if (!(Module['wasmMemory'] instanceof WebAssembly.Memory)) {
+	// 		err('no native wasm Memory in use');
+
+	// 		return false;
+	// 	}
+
+	// 	env['memory'] 			= Module['wasmMemory'];
+	// 	info['global'] 			= {'NaN': NaN, 'Infinity': Infinity};
+	// 	info['global.Math'] = Math;
+	// 	info['env'] 				= env;
+
+	// 	function receiveInstance(instance, module) {
+	// 		exports = instance.exports;
+
+	// 		if (exports.memory) {
+	// 			mergeMemory(exports.memory);
+	// 		}
+
+	// 		Module['asm'] 			= exports;
+	// 		Module['usingWasm'] = true;
+
+	// 		removeRunDependency('wasm-instantiate');
+	// 	}
+
+	// 	addRunDependency('wasm-instantiate');
+
+	// 	if (Module['instantiateWasm']) {
+	// 		try {
+	// 			return Module['instantiateWasm'](info, receiveInstance);
+	// 		}
+	// 		catch (e) {
+	// 			err('Module.instantiateWasm callback failed with error: ' + e);
+
+	// 			return false;
+	// 		}
+	// 	}
+
+	// 	function receiveInstantiatedSource(output) {
+	// 		receiveInstance(output['instance'], output['module']);
+	// 	}
+
+	// 	function instantiateArrayBuffer(receiver) {
+	// 		getBinaryPromise().
+	// 			then((function(binary) {
+	// 				return WebAssembly.instantiate(binary, info);
+	// 			})).
+	// 			then(receiver).
+	// 			catch((function(reason) {
+	// 				err('failed to asynchronously prepare wasm: ' + reason);
+	// 				abort(reason);
+	// 			}));
+	// 	}
+
+	// 	if (
+	// 		!Module['wasmBinary'] && 
+	// 		typeof WebAssembly.instantiateStreaming === 'function' && 
+	// 		!isDataURI(wasmBinaryFile) && 
+	// 		typeof fetch === 'function'
+	// 	) {
+	// 		WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, {credentials: 'same-origin'}), info).
+	// 			then(receiveInstantiatedSource).
+	// 			catch((function(reason) {
+	// 				err('wasm streaming compile failed: ' + reason);
+	// 				err('falling back to ArrayBuffer instantiation');
+	// 				instantiateArrayBuffer(receiveInstantiatedSource);
+	// 			}));
+	// 	}
+	// 	else {
+	// 		instantiateArrayBuffer(receiveInstantiatedSource);
+	// 	}
+
+	// 	return {};
+	// }
+
+	const doNativeWasm = async (global, env, providedBuffer) => {
 
 		if (typeof WebAssembly !== 'object') {
 			err('no native wasm support detected');
@@ -1177,7 +1266,9 @@ function integrateWasmJS() {
 		env['memory'] 			= Module['wasmMemory'];
 		info['global'] 			= {'NaN': NaN, 'Infinity': Infinity};
 		info['global.Math'] = Math;
-		info['env'] 				= env;
+		info['env'] 				= env;		
+
+
 
 		function receiveInstance(instance, module) {
 			exports = instance.exports;
@@ -1209,38 +1300,72 @@ function integrateWasmJS() {
 			receiveInstance(output['instance'], output['module']);
 		}
 
-		function instantiateArrayBuffer(receiver) {
-			getBinaryPromise().
-				then((function(binary) {
-					return WebAssembly.instantiate(binary, info);
-				})).
-				then(receiver).
-				catch((function(reason) {
-					err('failed to asynchronously prepare wasm: ' + reason);
-					abort(reason);
-				}));
-		}
+
+		addRunDependency('wasm-instantiate');
+
+		if (Module['instantiateWasm']) {
+			try {
+				return Module['instantiateWasm'](info, receiveInstance);
+			}
+			catch (error) {
+				err(`Module.instantiateWasm callback failed with error: ${error}`);
+
+				return false;
+			}
+		}	
+
+		const instantiateArrayBuffer = async receiver => {
+			try {
+				const magickWasm = await import(
+					/* webpackChunkName: 'magick-wasm' */ 
+					'wasm-imagemagick/dist/magick.wasm'
+				);
+
+				const response = await fetch(magickWasm.default);
+				const buffer 	 = await response.arrayBuffer();
+				const output 	 = await WebAssembly.instantiate(buffer, info);
+				
+				receiver(output);
+			}
+			catch (error) {
+				err(`failed to asynchronously prepare wasm: ${error}`);
+				abort(error);
+			}
+		};
+
 
 		if (
 			!Module['wasmBinary'] && 
 			typeof WebAssembly.instantiateStreaming === 'function' && 
-			!isDataURI(wasmBinaryFile) && 
 			typeof fetch === 'function'
 		) {
-			WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, {credentials: 'same-origin'}), info).
-				then(receiveInstantiatedSource).
-				catch((function(reason) {
-					err('wasm streaming compile failed: ' + reason);
-					err('falling back to ArrayBuffer instantiation');
-					instantiateArrayBuffer(receiveInstantiatedSource);
-				}));
+
+			try {
+
+				const magickWasm = await import(
+					/* webpackChunkName: 'magick-wasm' */ 
+					'wasm-imagemagick/dist/magick.wasm'
+				);
+
+				const output = await WebAssembly.instantiateStreaming(
+					fetch(magickWasm.default, {credentials: 'same-origin'}), 
+					info
+				);
+
+				receiveInstantiatedSource(output);
+			}
+			catch (error) {
+				err(`wasm streaming compile failed: ${error}`);
+				err('falling back to ArrayBuffer instantiation');
+				instantiateArrayBuffer(receiveInstantiatedSource);
+			}
 		}
 		else {
 			instantiateArrayBuffer(receiveInstantiatedSource);
 		}
 
 		return {};
-	}
+	};
 
 
 	Module['asmPreload'] = Module['asm'];
@@ -1358,6 +1483,7 @@ function ___assert_fail(condition, filename, line, func) {
 var ENV = {};
 
 function ___buildEnvironment(environ) {
+
 	var MAX_ENV_VALUES = 64;
 	var TOTAL_ENV_SIZE = 1024;
 	var poolPtr;
@@ -2534,7 +2660,7 @@ var MEMFS = {
 					}
 				}
 
-				allocated = true;;
+				allocated = true;
 				ptr = _malloc(length);
 
 				if (!ptr) {
@@ -3927,38 +4053,85 @@ var FS = {
 	}),
 
 	createStream: (function(stream, fd_start, fd_end) {
-		if (!FS.FSStream) {
-			FS.FSStream = (function() {});
-			FS.FSStream.prototype = {};
 
-			Object.defineProperties(FS.FSStream.prototype, {
-				object: {
-					get: (function() {
-						return this.node;
-					}),
-					set: (function(val) {
-						this.node = val;
-					})
-				},
-				isRead: {
-					get: (function() {
-						return (this.flags & 2097155) !== 1;
-					})
-				},
-				isWrite: {
-					get: (function() {
-						return (this.flags & 2097155) !== 0;
-					})
-				},
-				isAppend: {
-					get: (function() {
-						return this.flags & 1024;
-					})
-				}
+
+		if (!FS.FSStream) {
+
+			FS.FSStream = (function() {
+
+				const obj = {};
+
+				Object.defineProperties(obj, {
+					object: {
+						get: (function() {
+							return this.node;
+						}),
+						set: (function(val) {
+							this.node = val;
+						})
+					},
+					isRead: {
+						get: (function() {
+							return (this.flags & 2097155) !== 1;
+						})
+					},
+					isWrite: {
+						get: (function() {
+							return (this.flags & 2097155) !== 0;
+						})
+					},
+					isAppend: {
+						get: (function() {
+							return this.flags & 1024;
+						})
+					}
+				});
+
+				return obj;
+
 			});
+
+			
+
+
 		}
 
-		var newStream = new FS.FSStream;
+		var newStream = FS.FSStream();
+
+
+
+		// if (!FS.FSStream) {
+		// 	FS.FSStream = (function() {});
+		// 	FS.FSStream.prototype = {};
+
+		// 	Object.defineProperties(FS.FSStream.prototype, {
+		// 		object: {
+		// 			get: (function() {
+		// 				return this.node;
+		// 			}),
+		// 			set: (function(val) {
+		// 				this.node = val;
+		// 			})
+		// 		},
+		// 		isRead: {
+		// 			get: (function() {
+		// 				return (this.flags & 2097155) !== 1;
+		// 			})
+		// 		},
+		// 		isWrite: {
+		// 			get: (function() {
+		// 				return (this.flags & 2097155) !== 0;
+		// 			})
+		// 		},
+		// 		isAppend: {
+		// 			get: (function() {
+		// 				return this.flags & 1024;
+		// 			})
+		// 		}
+		// 	});
+		// }
+
+		// var newStream = new FS.FSStream;
 
 		for (var p in stream) {
 			newStream[p] = stream[p];
@@ -4622,6 +4795,7 @@ var FS = {
 	}),
 
 	open: (function(path, flags, mode, fd_start, fd_end) {
+
 		if (path === '') {
 			throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
 		}
@@ -4829,6 +5003,7 @@ var FS = {
 	}),
 
 	write: (function(stream, buffer, offset, length, position, canOwn) {
+
 		if (length < 0 || position < 0) {
 			throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
 		}
@@ -5906,6 +6081,9 @@ var FS = {
 	})
 };
 
+
+
+
 var SYSCALLS = {
 	DEFAULT_POLLMASK: 5,
 	mappings: 				{},
@@ -6170,6 +6348,10 @@ var SYSCALLS = {
 function ___syscall10(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall10 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var path = SYSCALLS.getStr();
 
@@ -6189,6 +6371,10 @@ function ___syscall10(which, varargs) {
 function ___syscall114(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall114 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		abort('cannot wait on child processes');
 	}
@@ -6203,6 +6389,10 @@ function ___syscall114(which, varargs) {
 
 function ___syscall118(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall118 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
@@ -6220,6 +6410,10 @@ function ___syscall118(which, varargs) {
 
 function ___syscall140(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall140 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var stream 			= SYSCALLS.getStreamFromFD();
@@ -6250,6 +6444,10 @@ function ___syscall140(which, varargs) {
 function ___syscall145(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall145 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
 		var iov 	 = SYSCALLS.get();
@@ -6268,6 +6466,10 @@ function ___syscall145(which, varargs) {
 
 function ___syscall146(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall146 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
@@ -6288,6 +6490,10 @@ function ___syscall146(which, varargs) {
 function ___syscall15(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall15 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var path = SYSCALLS.getStr();
 		var mode = SYSCALLS.get();
@@ -6307,6 +6513,10 @@ function ___syscall15(which, varargs) {
 
 function ___syscall180(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall180 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
@@ -6329,6 +6539,10 @@ function ___syscall180(which, varargs) {
 function ___syscall181(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall181 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
 		var buf 	 = SYSCALLS.get();
@@ -6349,6 +6563,10 @@ function ___syscall181(which, varargs) {
 
 function ___syscall183(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall183 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var buf  = SYSCALLS.get();
@@ -6381,6 +6599,10 @@ function ___syscall183(which, varargs) {
 function ___syscall191(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall191 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var resource = SYSCALLS.get();
 		var rlim 		 = SYSCALLS.get();
@@ -6401,6 +6623,10 @@ function ___syscall191(which, varargs) {
 
 function ___syscall192(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall192 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var addr 	= SYSCALLS.get();
@@ -6460,6 +6686,10 @@ function ___syscall192(which, varargs) {
 function ___syscall195(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall195 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var path = SYSCALLS.getStr();
 		var buf  = SYSCALLS.get();
@@ -6477,6 +6707,10 @@ function ___syscall195(which, varargs) {
 
 function ___syscall197(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall197 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
@@ -6498,6 +6732,10 @@ var PROCINFO = {ppid: 1, pid: 42, sid: 42, pgid: 42};
 function ___syscall20(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall20 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		return PROCINFO.pid;
 	}
@@ -6512,6 +6750,10 @@ function ___syscall20(which, varargs) {
 
 function ___syscall220(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall220 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
@@ -6568,6 +6810,10 @@ function ___syscall220(which, varargs) {
 
 function ___syscall221(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall221 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
@@ -6634,6 +6880,10 @@ function ___syscall221(which, varargs) {
 function ___syscall3(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall3 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
 		var buf 	 = SYSCALLS.get();
@@ -6652,6 +6902,10 @@ function ___syscall3(which, varargs) {
 
 function ___syscall324(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall324 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
@@ -6677,6 +6931,10 @@ function ___syscall324(which, varargs) {
 function ___syscall33(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall33 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var path 	= SYSCALLS.getStr();
 		var amode = SYSCALLS.get();
@@ -6694,6 +6952,10 @@ function ___syscall33(which, varargs) {
 
 function ___syscall340(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall340 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var pid 			= SYSCALLS.get();
@@ -6722,6 +6984,10 @@ function ___syscall340(which, varargs) {
 function ___syscall38(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall38 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var old_path = SYSCALLS.getStr();
 		var new_path = SYSCALLS.getStr();
@@ -6742,6 +7008,10 @@ function ___syscall38(which, varargs) {
 function ___syscall4(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall4 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
 		var buf 	 = SYSCALLS.get();
@@ -6760,6 +7030,10 @@ function ___syscall4(which, varargs) {
 
 function ___syscall5(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall5 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var pathname = SYSCALLS.getStr();
@@ -6780,6 +7054,10 @@ function ___syscall5(which, varargs) {
 
 function ___syscall54(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall54 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
@@ -6859,6 +7137,10 @@ function ___syscall54(which, varargs) {
 function ___syscall6(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall6 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var stream = SYSCALLS.getStreamFromFD();
 
@@ -6877,6 +7159,10 @@ function ___syscall6(which, varargs) {
 
 function ___syscall77(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall77 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var who 	= SYSCALLS.get();
@@ -6903,6 +7189,10 @@ function ___syscall77(which, varargs) {
 function ___syscall83(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall83 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var target 	 = SYSCALLS.getStr();
 		var linkpath = SYSCALLS.getStr();
@@ -6923,6 +7213,10 @@ function ___syscall83(which, varargs) {
 function ___syscall85(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
+
+	// console.log('___syscall85 which: ', which, ' varargs: ', varargs);
+
+
 	try {
 		var path 		= SYSCALLS.getStr();
 		var buf 		= SYSCALLS.get();
@@ -6941,6 +7235,10 @@ function ___syscall85(which, varargs) {
 
 function ___syscall91(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall191 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var addr = SYSCALLS.get();
@@ -6974,6 +7272,10 @@ function ___syscall91(which, varargs) {
 
 function ___syscall94(which, varargs) {
 	SYSCALLS.varargs = varargs;
+
+
+	// console.log('___syscall94 which: ', which, ' varargs: ', varargs);
+
 
 	try {
 		var fd 	 = SYSCALLS.get();
@@ -7069,7 +7371,16 @@ function _gettimeofday(ptr) {
 	return 0;
 }
 
-var ___tm_timezone = allocate(intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
+
+
+
+// var ___tm_timezone = allocate(intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
+// console.log('___tm_timezone: ', ___tm_timezone);
+var ___tm_timezone = 0;
+
+
+
+
 
 function _gmtime_r(time, tmPtr) {
 	var date = new Date(HEAP32[time >> 2] * 1e3);
@@ -7853,6 +8164,8 @@ function _waitpid() {
 	return _wait.apply(null, arguments);
 }
 
+
+
 if (ENVIRONMENT_IS_NODE) {
 	_emscripten_get_now = function _emscripten_get_now_actual() {
 		var t = process['hrtime']();
@@ -7881,7 +8194,11 @@ else {
 	_emscripten_get_now = Date.now;
 }
 
+
+
 FS.staticInit();
+
+
 
 __ATINIT__.unshift((function() {
 	if (!Module['noFSInit'] && !FS.init.initialized) {
@@ -7905,6 +8222,8 @@ __ATEXIT__.push((function() {
 	TTY.shutdown();
 }));
 
+
+
 if (ENVIRONMENT_IS_NODE) {
 
 	const bundlerIgnoredRequire = m => eval('require')(m);
@@ -7915,6 +8234,8 @@ if (ENVIRONMENT_IS_NODE) {
 	NODEFS.staticInit();
 }
 
+
+
 DYNAMICTOP_PTR = staticAlloc(4);
 STACK_BASE = STACKTOP = alignMemory(STATICTOP);
 STACK_MAX = STACK_BASE + TOTAL_STACK;
@@ -7923,6 +8244,12 @@ DYNAMIC_BASE = alignMemory(STACK_MAX);
 HEAP32[DYNAMICTOP_PTR >> 2] = DYNAMIC_BASE;
 
 staticSealed = true;
+
+
+
+
+
+
 
 function intArrayFromString(stringy, dontAddNull, length) {
 	var len 						= length > 0 ? length : lengthBytesUTF8(stringy) + 1;
@@ -7942,6 +8269,10 @@ Module['wasmMaxTableSize'] = 1862;
 function invoke_dii(index, a1, a2) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_dii: ', sp);
+
+
 	try {
 		return Module['dynCall_dii'](index, a1, a2);
 	}
@@ -7956,6 +8287,10 @@ function invoke_dii(index, a1, a2) {
 
 function invoke_i(index) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_i: ', sp);
+
 
 	try {
 		return Module['dynCall_i'](index);
@@ -7972,6 +8307,10 @@ function invoke_i(index) {
 function invoke_ii(index, a1) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_ii: ', sp);
+
+
 	try {
 		return Module['dynCall_ii'](index, a1);
 	}
@@ -7986,6 +8325,10 @@ function invoke_ii(index, a1) {
 
 function invoke_iifi(index, a1, a2, a3) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_iifi: ', sp);
+
 
 	try {
 		return Module['dynCall_iifi'](index, a1, a2, a3);
@@ -8002,6 +8345,10 @@ function invoke_iifi(index, a1, a2, a3) {
 function invoke_iii(index, a1, a2) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_iii: ', sp);
+
+
 	try {
 		return Module['dynCall_iii'](index, a1, a2);
 	}
@@ -8016,6 +8363,10 @@ function invoke_iii(index, a1, a2) {
 
 function invoke_iiii(index, a1, a2, a3) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_iiii: ', sp);
+
 
 	try {
 		return Module['dynCall_iiii'](index, a1, a2, a3);
@@ -8032,6 +8383,10 @@ function invoke_iiii(index, a1, a2, a3) {
 function invoke_iiiii(index, a1, a2, a3, a4) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_iiiii: ', sp);
+
+
 	try {
 		return Module['dynCall_iiiii'](index, a1, a2, a3, a4);
 	}
@@ -8046,6 +8401,10 @@ function invoke_iiiii(index, a1, a2, a3, a4) {
 
 function invoke_iiiiii(index, a1, a2, a3, a4, a5) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_iiiiii: ', sp);
+
 
 	try {
 		return Module['dynCall_iiiiii'](index, a1, a2, a3, a4, a5);
@@ -8062,6 +8421,10 @@ function invoke_iiiiii(index, a1, a2, a3, a4, a5) {
 function invoke_iiiiiii(index, a1, a2, a3, a4, a5, a6) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_iiiiiii: ', sp);
+
+
 	try {
 		return Module['dynCall_iiiiiii'](index, a1, a2, a3, a4, a5, a6);
 	}
@@ -8076,6 +8439,10 @@ function invoke_iiiiiii(index, a1, a2, a3, a4, a5, a6) {
 
 function invoke_iiiiiiii(index, a1, a2, a3, a4, a5, a6, a7) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_iiiiiiii: ', sp);
+
 
 	try {
 		return Module['dynCall_iiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7);
@@ -8092,6 +8459,11 @@ function invoke_iiiiiiii(index, a1, a2, a3, a4, a5, a6, a7) {
 function invoke_iiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_iiiiiiiii: ', sp);
+
+
+
 	try {
 		return Module['dynCall_iiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8);
 	}
@@ -8106,6 +8478,11 @@ function invoke_iiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8) {
 
 function invoke_iiiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_iiiiiiiiii: ', sp);
+
+
 
 	try {
 		return Module['dynCall_iiiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9);
@@ -8122,6 +8499,12 @@ function invoke_iiiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
 function invoke_iiiiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_iiiiiiiiiii: ', sp);
+
+
+
+
 	try {
 		return Module['dynCall_iiiiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
 	}
@@ -8136,6 +8519,12 @@ function invoke_iiiiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
 
 function invoke_iiijj(index, a1, a2, a3, a4, a5, a6) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_iiijj: ', sp);
+
+
+
 
 	try {
 		return Module['dynCall_iiijj'](index, a1, a2, a3, a4, a5, a6);
@@ -8152,6 +8541,12 @@ function invoke_iiijj(index, a1, a2, a3, a4, a5, a6) {
 function invoke_iij(index, a1, a2, a3) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_iij: ', sp);
+
+
+
+
 	try {
 		return Module['dynCall_iij'](index, a1, a2, a3);
 	}
@@ -8166,6 +8561,12 @@ function invoke_iij(index, a1, a2, a3) {
 
 function invoke_ji(index, a1) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_ji: ', sp);
+
+
+
 
 	try {
 		return Module['dynCall_ji'](index, a1);
@@ -8182,6 +8583,12 @@ function invoke_ji(index, a1) {
 function invoke_v(index) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_v: ', sp);
+
+
+
+
 	try {
 		Module['dynCall_v'](index);
 	}
@@ -8196,6 +8603,12 @@ function invoke_v(index) {
 
 function invoke_vi(index, a1) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_vi: ', sp);
+
+
+
 
 	try {
 		Module['dynCall_vi'](index, a1);
@@ -8212,6 +8625,12 @@ function invoke_vi(index, a1) {
 function invoke_vii(index, a1, a2) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_vii: ', sp);
+
+
+
+
 	try {
 		Module['dynCall_vii'](index, a1, a2);
 	}
@@ -8226,6 +8645,12 @@ function invoke_vii(index, a1, a2) {
 
 function invoke_viid(index, a1, a2, a3) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_viid: ', sp);
+
+
+
 
 	try {
 		Module['dynCall_viid'](index, a1, a2, a3);
@@ -8242,6 +8667,12 @@ function invoke_viid(index, a1, a2, a3) {
 function invoke_viidddddddd(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_viidddddddd: ', sp);
+
+
+
+
 	try {
 		Module['dynCall_viidddddddd'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10);
 	}
@@ -8256,6 +8687,13 @@ function invoke_viidddddddd(index, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
 
 function invoke_viii(index, a1, a2, a3) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_viii: ', sp);
+
+
+
+
 
 	try {
 		Module['dynCall_viii'](index, a1, a2, a3);
@@ -8272,6 +8710,13 @@ function invoke_viii(index, a1, a2, a3) {
 function invoke_viiii(index, a1, a2, a3, a4) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_viiii: ', sp);
+
+
+
+
+
 	try {
 		Module['dynCall_viiii'](index, a1, a2, a3, a4);
 	}
@@ -8286,6 +8731,13 @@ function invoke_viiii(index, a1, a2, a3, a4) {
 
 function invoke_viiiii(index, a1, a2, a3, a4, a5) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_viiiii: ', sp);
+
+
+
+
 
 	try {
 		Module['dynCall_viiiii'](index, a1, a2, a3, a4, a5);
@@ -8302,6 +8754,13 @@ function invoke_viiiii(index, a1, a2, a3, a4, a5) {
 function invoke_viiiiii(index, a1, a2, a3, a4, a5, a6) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_viiiiii: ', sp);
+
+
+
+
+
 	try {
 		Module['dynCall_viiiiii'](index, a1, a2, a3, a4, a5, a6);
 	}
@@ -8316,6 +8775,13 @@ function invoke_viiiiii(index, a1, a2, a3, a4, a5, a6) {
 
 function invoke_viiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
 	var sp = stackSave();
+
+
+	// console.log('invoke_viiiiiiiii: ', sp);
+
+
+
+
 
 	try {
 		Module['dynCall_viiiiiiiii'](index, a1, a2, a3, a4, a5, a6, a7, a8, a9);
@@ -8332,6 +8798,12 @@ function invoke_viiiiiiiii(index, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
 function invoke_vij(index, a1, a2, a3) {
 	var sp = stackSave();
 
+
+	// console.log('invoke_vij: ', sp);
+
+
+
+
 	try {
 		Module['dynCall_vij'](index, a1, a2, a3);
 	}
@@ -8343,6 +8815,11 @@ function invoke_vij(index, a1, a2, a3) {
 		Module['setThrew'](1, 0);
 	}
 }
+
+
+
+
+
 
 Module.asmGlobalArg = {};
 
@@ -8453,7 +8930,6 @@ Module.asmLibraryArg = {
 var asm = Module['asm'](Module.asmGlobalArg, Module.asmLibraryArg, buffer);
 
 Module['asm'] = asm;
-
 
 var ___emscripten_environ_constructor = Module['___emscripten_environ_constructor'] = (function() {
 	return Module['asm']['___emscripten_environ_constructor'].apply(null, arguments);
@@ -8647,8 +9123,12 @@ dependenciesFulfilled = function runCaller() {
 	}
 };
 
+
+
+
 Module['callMain'] = function callMain(args) {
 	args = args || [];
+
 	ensureInitRuntime();
 
 	var argc = args.length + 1;
@@ -8696,7 +9176,7 @@ Module['callMain'] = function callMain(args) {
 function run(args) {
 	args = args || Module['arguments'];
 
-	if (runDependencies > 0) { return;}
+	if (runDependencies > 0) { return; }
 
 	preRun();
 

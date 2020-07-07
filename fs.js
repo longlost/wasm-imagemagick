@@ -56,11 +56,11 @@ const FS = {
 	root: 									 fsShared.exposed.root,
 	mounts: 								 [],
 	streams: 								 fsShared.streams,
-	nextInode: 							 fsShared.nextInode,
-	nameTable: 							 fsShared.nameTable,
+	nextInode: 							 fsShared.exposed.nextInode,
+	nameTable: 							 fsShared.exposed.nameTable,
 	currentPath: 						 fsShared.exposed.currentPath,
 	initialized: 						 false,
-	ignorePermissions: 			 fsShared.ignorePermissions,
+	ignorePermissions: 			 fsShared.exposed.ignorePermissions,
 	trackingDelegate: 			 fsShared.trackingDelegate,
 	tracking: 							 fsShared.tracking,
 	ErrnoError: 						 utils.ErrnoError,
@@ -941,18 +941,13 @@ const FS = {
 		if (data) {
 			if (typeof data === 'string') {
 
-				const charCodes = data.split('').map(char => char.charCodeAt(0));
+				const arr = new Array(data.length);
 
-				data = charCodes;
+				for (let i = 0, len = data.length; i < len; ++i) {
+					arr[i] = data.charCodeAt(i);
+				}
 
-
-				// var arr = new Array(data.length);
-
-				// for (var i = 0, len = data.length; i < len; ++i) {
-				// 	arr[i] = data.charCodeAt(i);
-				// }
-
-				// data = arr;
+				data = arr;
 			}
 
 			FS.chmod(node, mode | 146);

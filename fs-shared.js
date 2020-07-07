@@ -7,9 +7,11 @@ import {
 import utils from './utils.js';
 import PATH  from './path.js';
 
+
 const MAX_OPEN_FDS 		 = 4096;
 const streams 		 		 = [];
 const trackingDelegate = {};
+const nameTable 	 		 = new Array(4096);
 
 const tracking = {
 	openFlags: {
@@ -18,25 +20,19 @@ const tracking = {
 	}
 };
 
-
 // Exposed to be set/updated by other modules.
 const exposed = {
-	currentPath: '/',
-	root: 			 null
+	currentPath: 			'/',
+	ignorePermissions: true,
+	nextInode: 	 			 1,
+	root: 			 			 null
 };
-
-
-let ignorePermissions = true;
-let nextInode 				= 1;
-let nameTable 				= new Array(4096);
-
 
 const genericErrors = {};
 const errorCode 	  = ERRNO_CODES.ENOENT;
 
 genericErrors[errorCode] 			 = new utils.ErrnoError(errorCode);
 genericErrors[errorCode].stack = '<generic error, no stack>';
-
 
 const flagModes = {
 	'r': 0,
@@ -113,60 +109,123 @@ const chrdev_stream_ops = {
 };
 
 
-const FSNode = function(parent, name, mode, rdev) {
-	if (!parent) {
-		parent = this;
-	}
+// const FSNode = function(parent, name, mode, rdev) {
+// 	if (!parent) {
+// 		parent = this;
+// 	}
 
-	this.parent 		= parent;
-	this.mount 			= parent.mount;
-	this.mounted 		= null;
-	this.id 				= nextInode++;
-	this.name 			= name;
-	this.mode 			= mode;
-	this.node_ops 	= {};
-	this.stream_ops = {};
-	this.rdev 			= rdev;
+// 	this.parent 		= parent;
+// 	this.mount 			= parent.mount;
+// 	this.mounted 		= null;
+// 	this.id 				= exposed.nextInode++;
+// 	this.name 			= name;
+// 	this.mode 			= mode;
+// 	this.node_ops 	= {};
+// 	this.stream_ops = {};
+// 	this.rdev 			= rdev;
+// };
+
+// FSNode.prototype = {};
+
+// const readMode  = 292 | 73;
+// const writeMode = 146;
+
+// Object.defineProperties(FSNode.prototype, {
+// 	read: {
+// 		get() {
+// 			return (this.mode & readMode) === readMode;
+// 		},
+
+// 		set(val) {
+// 			val ? this.mode |= readMode : this.mode &= ~readMode;
+// 		}
+// 	},
+
+// 	write: {
+// 		get() {
+// 			return (this.mode & writeMode) === writeMode;
+// 		},
+
+// 		set(val) {
+// 			val ? this.mode |= writeMode : this.mode &= ~writeMode;
+// 		}
+// 	},
+
+// 	isFolder: {
+// 		get() {
+// 			return isDir(this.mode);
+// 		}
+// 	},
+
+// 	isDevice: {
+// 		get() {
+// 			return isChrdev(this.mode);
+// 		}
+// 	}
+// });
+
+
+const FSNode = (parent, name, mode, rdev) => {
+
+	const obj = {
+		mount: 	 parent ? parent.mount : null,
+		mounted: null,
+		id: 		 exposed.nextInode++,
+		name,
+		mode,
+		node_ops: 	{},
+		stream_ops: {},
+		rdev
+	};
+
+	obj.parent = parent || obj;
+
+
+	const readMode  = 292 | 73;
+	const writeMode = 146;
+
+	Object.defineProperties(obj, {
+		read: {
+			get() {
+				return (this.mode & readMode) === readMode;
+			},
+
+			set(val) {
+				val ? this.mode |= readMode : this.mode &= ~readMode;
+			}
+		},
+
+		write: {
+			get() {
+				return (this.mode & writeMode) === writeMode;
+			},
+
+			set(val) {
+				val ? this.mode |= writeMode : this.mode &= ~writeMode;
+			}
+		},
+
+		isFolder: {
+			get() {
+				return isDir(this.mode);
+			}
+		},
+
+		isDevice: {
+			get() {
+				return isChrdev(this.mode);
+			}
+		}
+	});
+
+	return obj;	
 };
 
-FSNode.prototype = {};
 
-const readMode  = 292 | 73;
-const writeMode = 146;
 
-Object.defineProperties(FSNode.prototype, {
-	read: {
-		get() {
-			return (this.mode & readMode) === readMode;
-		},
 
-		set(val) {
-			val ? this.mode |= readMode : this.mode &= ~readMode;
-		}
-	},
 
-	write: {
-		get() {
-			return (this.mode & writeMode) === writeMode;
-		},
 
-		set(val) {
-			val ? this.mode |= writeMode : this.mode &= ~writeMode;
-		}
-	},
-
-	isFolder: {
-		get() {
-			return isDir(this.mode);
-		}
-	},
-
-	isDevice: {
-		get() {
-			return isChrdev(this.mode);
-		}
-	}
-});
 
 const hashName = (parentid, name) => {
 	let hash = 0;
@@ -185,16 +244,28 @@ const hashAddNode = node => {
 	nameTable[hash] = node;
 };
 
+// const createNode = (parent, name, mode, rdev) => {	
+// 	const node = new FSNode(parent, name, mode, rdev);
+
+// 	hashAddNode(node);
+
+// 	return node;
+// };
+
+
+
 const createNode = (parent, name, mode, rdev) => {	
-	const node = new FSNode(parent, name, mode, rdev);
+	const node = FSNode(parent, name, mode, rdev);
 
 	hashAddNode(node);
 
 	return node;
 };
 
+
+
 const nodePermissions = (node, perms) => {
-	if (ignorePermissions) {
+	if (exposed.ignorePermissions) {
 		return 0;
 	}
 
@@ -479,37 +550,71 @@ const nextfd = (fd_start, fd_end) => {
 };
 
 
-const FSStream 		 = function() {};
-FSStream.prototype = {};
+// const FSStream 		 = function() {};
+// FSStream.prototype = {};
 
-Object.defineProperties(FSStream.prototype, {
-	object: {
-		get() {
-			return this.node;
+// Object.defineProperties(FSStream.prototype, {
+// 	object: {
+// 		get() {
+// 			return this.node;
+// 		},
+// 		set(val) {
+// 			this.node = val;
+// 		}
+// 	},
+// 	isRead: {
+// 		get() {
+// 			return (this.flags & 2097155) !== 1;
+// 		}
+// 	},
+// 	isWrite: {
+// 		get() {
+// 			return (this.flags & 2097155) !== 0;
+// 		}
+// 	},
+// 	isAppend: {
+// 		get() {
+// 			return this.flags & 1024;
+// 		}
+// 	}
+// });
+
+
+const FSStream = () => {
+	const obj = {};
+
+	Object.defineProperties(obj, {
+		object: {
+			get() {
+				return this.node;
+			},
+			set(val) {
+				this.node = val;
+			}
 		},
-		set(val) {
-			this.node = val;
+		isRead: {
+			get() {
+				return (this.flags & 2097155) !== 1;
+			}
+		},
+		isWrite: {
+			get() {
+				return (this.flags & 2097155) !== 0;
+			}
+		},
+		isAppend: {
+			get() {
+				return this.flags & 1024;
+			}
 		}
-	},
-	isRead: {
-		get() {
-			return (this.flags & 2097155) !== 1;
-		}
-	},
-	isWrite: {
-		get() {
-			return (this.flags & 2097155) !== 0;
-		}
-	},
-	isAppend: {
-		get() {
-			return this.flags & 1024;
-		}
-	}
-});
+	});
+
+	return obj;
+};
+
 
 const createStream = (stream, fd_start, fd_end) => {	
-	const newStream = new FSStream;
+	const newStream = FSStream();
 
 	for (const p in stream) {
 		newStream[p] = stream[p];
@@ -525,7 +630,27 @@ const createStream = (stream, fd_start, fd_end) => {
 	return stream;
 };
 
+
+
+// const createStream = (stream, fd_start, fd_end) => {	
+// 	const newStream = new FSStream;
+
+// 	for (const p in stream) {
+// 		newStream[p] = stream[p];
+// 	}
+
+// 	stream = newStream;
+
+// 	const fd = nextfd(fd_start, fd_end);
+
+// 	stream.fd 	= fd;
+// 	streams[fd] = stream;
+
+// 	return stream;
+// };
+
 const open = (path, flags, mode, fd_start, fd_end) => {
+
 	if (path === '') {
 		throw new utils.ErrnoError(ERRNO_CODES.ENOENT);
 	}
@@ -653,6 +778,7 @@ const llseek = (stream, offset, whence) => {
 };
 
 const write = (stream, buffer, offset, length, position, canOwn) => {
+
 	if (length < 0 || position < 0) {
 		throw new utils.ErrnoError(ERRNO_CODES.EINVAL);
 	}
@@ -920,8 +1046,8 @@ const unlink = path => {
 
 
 export default {
-	exposed,
 	MAX_OPEN_FDS,
+	exposed,
 	chmod,
 	chrdev_stream_ops,
 	close,
@@ -937,7 +1063,6 @@ export default {
 	hashName,
 	hashAddNode,
 	hashRemoveNode,
-	ignorePermissions,
 	isBlkdev,
 	isChrdev,
 	isClosed,
@@ -960,7 +1085,6 @@ export default {
 	modeStringToFlags,
 	nameTable,
 	nextfd,
-	nextInode,
 	nodePermissions,
 	open,
 	readdir,

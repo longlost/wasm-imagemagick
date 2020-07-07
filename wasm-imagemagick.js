@@ -13,22 +13,21 @@ mod.Module.onRuntimeInitialized = () => {
 
 
 
+
+
 // // TESTING ONLY!!!
 // // Can get it to run but the .wasm file cannot resole the FS paths correctly,
 // // so the c code never finds the image files to process.
+
+
 // import {FS, Module} from './original-code-formatted.js';
 // const callMain = Module['callMain'];
 
-
 // const directory = '/pictures';
-
-
 // Module.onRuntimeInitialized = () => {
 //   FS.mkdir(directory);
 //   FS.currentPath = directory;
 // };
-
-// Can overwrite Module.locateFile to work with webpack if needed.
 
 
 
@@ -49,9 +48,9 @@ const readAsArrayBuffer = file => {
 };
 
 
-const getProcessedFiles = types => {
-  const dir        = FS.open(directory);  
-  const {contents} = dir.node;
+const getProcessedFiles = refs => {
+  // const dir        = FS.open(directory);  
+  // const {contents} = dir.node;
 
 
 
@@ -62,13 +61,25 @@ const getProcessedFiles = types => {
 
 
 
-  const files = Object.keys(contents).map((key, index) => {
-    const read = FS.readFile(key);
+  // const files = Object.keys(contents).map((key, index) => {
+  //   const read = FS.readFile(key);
+
+  //   // Cleanup read file.
+  //   FS.unlink(key);
+
+  //   return new File([read], key, {type: types[index]});
+  // });
+
+  const files = refs.map(ref => {
+
+    const {name, type} = ref;
+
+    const read = FS.readFile(name);
 
     // Cleanup read file.
-    FS.unlink(key);
+    FS.unlink(name);
 
-    return new File([read], key, {type: types[index]});
+    return new File([read], name, {type});
   });
     
   return files;
@@ -81,28 +92,25 @@ const magick = async (files, commands) => {
   const buffers        = await Promise.all(bufferPromises);  
 
   try {
+
     // ImageMagick can work with more than one image at a time.
     files.forEach((file, index) => {
       const buffer = buffers[index];
       const data   = new Uint8Array(buffer);
 
-
-      // FS.writeFile(file.name, data);
-      // console.log('writeFile name: ', `input_${file.name}`);
-
       FS.writeFile(`input_${file.name}`, data);
-
     });
 
 
     callMain(commands);
 
-    // const types     = files.map(file => file.type);    
-    // const processed = getProcessedFiles(types);
 
-    // return processed;
+    const processedRefs = files.map(file => ({name: file.name, type: file.type}));    
+    const processed = getProcessedFiles(processedRefs);
 
-    return;
+    return processed;
+
+    // return;
   }
   catch (error) {
     console.error(error);
