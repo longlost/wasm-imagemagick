@@ -1,11 +1,8 @@
 
 
-import {
-	ERRNO_CODES
-} from './constants.js';
-
-import utils from './utils.js';
-import PATH  from './path.js';
+import {ERRNO_CODES} from './constants.js';
+import utils 				 from './utils.js';
+import PATH  				 from './path.js';
 
 
 const MAX_OPEN_FDS 		 = 4096;
@@ -22,10 +19,9 @@ const tracking = {
 
 // Exposed to be set/updated by other modules.
 const exposed = {
-	currentPath: 			'/',
-	ignorePermissions: true,
-	nextInode: 	 			 1,
-	root: 			 			 null
+	currentPath: '/',
+	nextInode: 	 	1,
+	root: 			 	null
 };
 
 const genericErrors = {};
@@ -108,64 +104,7 @@ const chrdev_stream_ops = {
 	}
 };
 
-
-// const FSNode = function(parent, name, mode, rdev) {
-// 	if (!parent) {
-// 		parent = this;
-// 	}
-
-// 	this.parent 		= parent;
-// 	this.mount 			= parent.mount;
-// 	this.mounted 		= null;
-// 	this.id 				= exposed.nextInode++;
-// 	this.name 			= name;
-// 	this.mode 			= mode;
-// 	this.node_ops 	= {};
-// 	this.stream_ops = {};
-// 	this.rdev 			= rdev;
-// };
-
-// FSNode.prototype = {};
-
-// const readMode  = 292 | 73;
-// const writeMode = 146;
-
-// Object.defineProperties(FSNode.prototype, {
-// 	read: {
-// 		get() {
-// 			return (this.mode & readMode) === readMode;
-// 		},
-
-// 		set(val) {
-// 			val ? this.mode |= readMode : this.mode &= ~readMode;
-// 		}
-// 	},
-
-// 	write: {
-// 		get() {
-// 			return (this.mode & writeMode) === writeMode;
-// 		},
-
-// 		set(val) {
-// 			val ? this.mode |= writeMode : this.mode &= ~writeMode;
-// 		}
-// 	},
-
-// 	isFolder: {
-// 		get() {
-// 			return isDir(this.mode);
-// 		}
-// 	},
-
-// 	isDevice: {
-// 		get() {
-// 			return isChrdev(this.mode);
-// 		}
-// 	}
-// });
-
-
-const FSNode = (parent, name, mode, rdev) => {
+const fsNode = (parent, name, mode, rdev) => {
 
 	const obj = {
 		mount: 	 parent ? parent.mount : null,
@@ -179,7 +118,6 @@ const FSNode = (parent, name, mode, rdev) => {
 	};
 
 	obj.parent = parent || obj;
-
 
 	const readMode  = 292 | 73;
 	const writeMode = 146;
@@ -221,12 +159,6 @@ const FSNode = (parent, name, mode, rdev) => {
 	return obj;	
 };
 
-
-
-
-
-
-
 const hashName = (parentid, name) => {
 	let hash = 0;
 
@@ -244,30 +176,15 @@ const hashAddNode = node => {
 	nameTable[hash] = node;
 };
 
-// const createNode = (parent, name, mode, rdev) => {	
-// 	const node = new FSNode(parent, name, mode, rdev);
-
-// 	hashAddNode(node);
-
-// 	return node;
-// };
-
-
-
 const createNode = (parent, name, mode, rdev) => {	
-	const node = FSNode(parent, name, mode, rdev);
+	const node = fsNode(parent, name, mode, rdev);
 
 	hashAddNode(node);
 
 	return node;
 };
 
-
-
 const nodePermissions = (node, perms) => {
-	if (exposed.ignorePermissions) {
-		return 0;
-	}
 
 	if (perms.indexOf('r') !== -1 && !(node.mode & 292)) {
 		return ERRNO_CODES.EACCES;
@@ -549,38 +466,7 @@ const nextfd = (fd_start, fd_end) => {
 	throw new utils.ErrnoError(ERRNO_CODES.EMFILE);
 };
 
-
-// const FSStream 		 = function() {};
-// FSStream.prototype = {};
-
-// Object.defineProperties(FSStream.prototype, {
-// 	object: {
-// 		get() {
-// 			return this.node;
-// 		},
-// 		set(val) {
-// 			this.node = val;
-// 		}
-// 	},
-// 	isRead: {
-// 		get() {
-// 			return (this.flags & 2097155) !== 1;
-// 		}
-// 	},
-// 	isWrite: {
-// 		get() {
-// 			return (this.flags & 2097155) !== 0;
-// 		}
-// 	},
-// 	isAppend: {
-// 		get() {
-// 			return this.flags & 1024;
-// 		}
-// 	}
-// });
-
-
-const FSStream = () => {
+const fsStream = () => {
 	const obj = {};
 
 	Object.defineProperties(obj, {
@@ -612,9 +498,8 @@ const FSStream = () => {
 	return obj;
 };
 
-
 const createStream = (stream, fd_start, fd_end) => {	
-	const newStream = FSStream();
+	const newStream = fsStream();
 
 	for (const p in stream) {
 		newStream[p] = stream[p];
@@ -629,25 +514,6 @@ const createStream = (stream, fd_start, fd_end) => {
 
 	return stream;
 };
-
-
-
-// const createStream = (stream, fd_start, fd_end) => {	
-// 	const newStream = new FSStream;
-
-// 	for (const p in stream) {
-// 		newStream[p] = stream[p];
-// 	}
-
-// 	stream = newStream;
-
-// 	const fd = nextfd(fd_start, fd_end);
-
-// 	stream.fd 	= fd;
-// 	streams[fd] = stream;
-
-// 	return stream;
-// };
 
 const open = (path, flags, mode, fd_start, fd_end) => {
 

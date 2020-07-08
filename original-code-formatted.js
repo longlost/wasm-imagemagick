@@ -7374,9 +7374,7 @@ function _gettimeofday(ptr) {
 
 
 
-// var ___tm_timezone = allocate(intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
-// console.log('___tm_timezone: ', ___tm_timezone);
-var ___tm_timezone = 0;
+var ___tm_timezone = allocate(intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
 
 
 

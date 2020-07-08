@@ -1,13 +1,12 @@
 
 import {
-	ALLOC_STATIC, 
-	ASMJS_PAGE_SIZE,
+	ALLOC_STATIC,
+	STATIC_BASE,
 	WASM_PAGE_SIZE
 } from './constants.js';
 
-import utils 	 from './utils.js';
-import runtime from './runtime.js';
-import mod 		 from './module.js';
+import mod 	 from './module.js';
+import utils from './utils.js';
 
 
 // Exposed to be set/updated in other modules.
@@ -17,13 +16,15 @@ const exposed = {
 	HEAP16: 	 			null,
 	HEAP32: 	 			null,
 	HEAPU8: 	 			null,
+	STACKTOP: 			0,
 	STATICTOP: 			0,
 	// Set with 'setAsm' in 'wasm-interface'.
 	_emscripten_replace_memory: null,
 	_malloc: 			null,
 	buffer: 			null,
 	stackAlloc: 	null,
-	staticSealed: false
+	staticSealed: false,
+	wasmMemory: 	null
 };
 
 
@@ -31,8 +32,27 @@ const TOTAL_STACK  = mod.Module['TOTAL_STACK']  || 5242880;
 let 	TOTAL_MEMORY = mod.Module['TOTAL_MEMORY'] || 16777216;
 
 
+exposed.STATICTOP = STATIC_BASE + 1212304;
+exposed.STATICTOP += 16;
+exposed.STATICTOP += 16;
+exposed.STATICTOP += 16;
+exposed.STATICTOP += 16;
+
+
 if (TOTAL_MEMORY < TOTAL_STACK) {
 	utils.err(`TOTAL_MEMORY should be larger than TOTAL_STACK, was ${TOTAL_MEMORY}! (TOTAL_STACK = ${TOTAL_STACK})`);
+}
+
+
+if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
+	exposed.wasmMemory = new WebAssembly.Memory({
+		'initial' : TOTAL_MEMORY / WASM_PAGE_SIZE
+	});
+	
+	exposed.buffer = exposed.wasmMemory.buffer;
+}
+else {
+	exposed.buffer = new ArrayBuffer(TOTAL_MEMORY);
 }
 
 
@@ -68,14 +88,35 @@ const updateGlobalBufferViews = () => {
 	mod.Module['HEAPF64'] = HEAPF64 			 = new Float64Array(exposed.buffer);
 };
 
+const wasmReallocBuffer = size => {
+	const old 		= exposed.buffer;
+	const oldSize = old.byteLength;
+
+	size = utils.alignUp(size, WASM_PAGE_SIZE);
+
+	try {
+
+		const wasmPageSize = 64 * 1024;
+		const result 			 = exposed.wasmMemory.grow((size - oldSize) / wasmPageSize);
+
+		if (result !== (-1 | 0)) {
+			return exposed.buffer = exposed.wasmMemory.buffer;
+		}
+		else {
+			return null;
+		}
+	}
+	catch (_) {
+		return null;
+	}
+};
+
 const enlargeMemory = () => {
-	const PAGE_MULTIPLE = mod.Module['usingWasm'] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
-	const LIMIT 				= 2147483648 - PAGE_MULTIPLE;
+	const LIMIT = 2147483648 - WASM_PAGE_SIZE;
 
 	if (exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2] > LIMIT) {
 		return false;
 	}
-
 
 	const MIN_TOTAL_MEMORY = 16777216;
 	const OLD_TOTAL_MEMORY = TOTAL_MEMORY;
@@ -85,14 +126,14 @@ const enlargeMemory = () => {
 	while (TOTAL_MEMORY < exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2]) {
 
 		if (TOTAL_MEMORY <= 536870912) {
-			TOTAL_MEMORY = utils.alignUp(2 * TOTAL_MEMORY, PAGE_MULTIPLE);
+			TOTAL_MEMORY = utils.alignUp(2 * TOTAL_MEMORY, WASM_PAGE_SIZE);
 		}
 		else {
-			TOTAL_MEMORY = Math.min(utils.alignUp((3 * TOTAL_MEMORY + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
+			TOTAL_MEMORY = Math.min(utils.alignUp((3 * TOTAL_MEMORY + 2147483648) / 4, WASM_PAGE_SIZE), LIMIT);
 		}
 	}
 
-	const replacement = mod.Module['reallocBuffer'](TOTAL_MEMORY);
+	const replacement = wasmReallocBuffer(TOTAL_MEMORY);
 
 	if (!replacement || replacement.byteLength !== TOTAL_MEMORY) {
 		TOTAL_MEMORY = OLD_TOTAL_MEMORY;
@@ -391,9 +432,6 @@ const getMemory = size => {
 	if (!exposed.staticSealed) { return; }
 
 	staticAlloc(size);
-
-	if (!runtime.exposed.runtimeInitialized) { return; }
-
 	dynamicAlloc(size);
 	
 	return exposed._malloc(size);
@@ -415,53 +453,31 @@ const writeAsciiToMemory = (str, buffer, dontAddNull) => {
 	}
 };
 
+const alignMemory = (size, factor) => {
 
-if (!mod.Module['reallocBuffer']) {
-	mod.Module['reallocBuffer'] = size => {
-		let ret;
+	const STACK_ALIGN = 16;
 
-		try {
-			const oldHEAP8 = exposed.HEAP8;
-			ret 				 	 = new ArrayBuffer(size);
-			const temp 		 = new Int8Array(ret);
-
-			temp.set(oldHEAP8)
-		}
-		catch (_) {
-			return false;
-		}
-
-		const success = exposed._emscripten_replace_memory(ret);
-
-		if (!success) { 
-			return false;
-		}
-
-		return ret;
-	};
-}
-
-
-if (mod.Module['buffer']) {
-	exposed.buffer = mod.Module['buffer'];
-}
-else {
-
-	if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
-		mod.Module['wasmMemory'] = new WebAssembly.Memory({
-			'initial' : TOTAL_MEMORY / WASM_PAGE_SIZE
-		});
-		exposed.buffer = mod.Module['wasmMemory'].buffer;
-	}
-	else {
-		exposed.buffer = new ArrayBuffer(TOTAL_MEMORY);
+	if (!factor) {
+		factor = STACK_ALIGN;
 	}
 
-	mod.Module['buffer'] = exposed.buffer;
-}
+	return Math.ceil(size / factor) * factor;
+};
 
 
 updateGlobalBufferViews();
+
+
+let STACK_BASE = 0;
+
+exposed.DYNAMICTOP_PTR = staticAlloc(4);
+STACK_BASE = exposed.STACKTOP = alignMemory(exposed.STATICTOP);
+
+const STACK_MAX 	 = STACK_BASE + TOTAL_STACK;
+const DYNAMIC_BASE = alignMemory(STACK_MAX);
+
+exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2] = DYNAMIC_BASE;
+exposed.staticSealed = true;
 
 
 export default {

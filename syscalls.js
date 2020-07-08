@@ -17,272 +17,233 @@ const exposed = {
 	_memalign: null
 };
 
+let varargs 	 = 0;
+const mappings = {};
+
 
 const stringToUTF8 = (str, outPtr, maxBytesToWrite) => 
 											 utils.stringToUTF8Array(str, memory.exposed.HEAPU8, outPtr, maxBytesToWrite);
+	
 
+const calculateAt = (dirfd, path) => {
+	if (path[0] !== '/') {
+		let dir;
 
-const SYSCALLS = {
-	DEFAULT_POLLMASK: 5,
-	mappings: 				{},
-	umask: 						511,
-
-	calculateAt(dirfd, path) {
-		if (path[0] !== '/') {
-			let dir;
-
-			if (dirfd === -100) {
-				dir = FS.cwd();
-			}
-			else {
-				const dirstream = FS.getStream(dirfd);
-
-				if (!dirstream) {
-					throw new utils.ErrnoError(ERRNO_CODES.EBADF);
-				}
-
-				dir = dirstream.path;
-			}
-
-			path = PATH.join2(dir, path);
-		}
-
-		return path;
-	},
-
-	doStat(func, path, buf) {
-
-		let stat;
-
-		try {
-			stat = func(path);
-		}
-		catch (error) {
-			if (error && error.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(error.node))) {
-				return -ERRNO_CODES.ENOTDIR;
-			}
-
-			throw error;
-		}
-
-		memory.exposed.HEAP32[buf >> 2] 		 = stat.dev;
-		memory.exposed.HEAP32[buf + 4 >> 2]  = 0;
-		memory.exposed.HEAP32[buf + 8 >> 2]  = stat.ino;
-		memory.exposed.HEAP32[buf + 12 >> 2] = stat.mode;
-		memory.exposed.HEAP32[buf + 16 >> 2] = stat.nlink;
-		memory.exposed.HEAP32[buf + 20 >> 2] = stat.uid;
-		memory.exposed.HEAP32[buf + 24 >> 2] = stat.gid;
-		memory.exposed.HEAP32[buf + 28 >> 2] = stat.rdev;
-		memory.exposed.HEAP32[buf + 32 >> 2] = 0;
-		memory.exposed.HEAP32[buf + 36 >> 2] = stat.size;
-		memory.exposed.HEAP32[buf + 40 >> 2] = 4096;
-		memory.exposed.HEAP32[buf + 44 >> 2] = stat.blocks;
-		memory.exposed.HEAP32[buf + 48 >> 2] = stat.atime.getTime() / 1e3 | 0;
-		memory.exposed.HEAP32[buf + 52 >> 2] = 0;
-		memory.exposed.HEAP32[buf + 56 >> 2] = stat.mtime.getTime() / 1e3 | 0;
-		memory.exposed.HEAP32[buf + 60 >> 2] = 0;
-		memory.exposed.HEAP32[buf + 64 >> 2] = stat.ctime.getTime() / 1e3 | 0;
-		memory.exposed.HEAP32[buf + 68 >> 2] = 0;
-		memory.exposed.HEAP32[buf + 72 >> 2] = stat.ino;
-
-		return 0;
-	},
-
-	doMsync(addr, stream, len, flags) {
-		const buffer = new Uint8Array(memory.exposed.HEAPU8.subarray(addr, addr + len));
-
-		FS.msync(stream, buffer, 0, len, flags);
-	},
-
-	doMkdir(path, mode) {
-		path = PATH.normalize(path);
-
-		if (path[path.length - 1] === '/') {
-			path = path.substr(0, path.length - 1);
-		}
-
-		FS.mkdir(path, mode, 0);
-
-		return 0;
-	},
-
-	doMknod(path, mode, dev) {
-		switch (mode & 61440) {
-			case 32768:
-			case 8192:
-			case 24576:
-			case 4096:
-			case 49152:
-				break;
-			default:
-				return -ERRNO_CODES.EINVAL;
-		}
-
-		FS.mknod(path, mode, dev);
-
-		return 0;
-	},
-
-	doReadlink(path, buf, bufsize) {
-		if (bufsize <= 0) {
-			return -ERRNO_CODES.EINVAL;
-		}
-
-		const ret 		= FS.readlink(path);
-		const len 		= Math.min(bufsize, utils.lengthBytesUTF8(ret));
-		const endChar = memory.exposed.HEAP8[buf + len];
-
-		stringToUTF8(ret, buf, bufsize + 1);
-
-		memory.exposed.HEAP8[buf + len] = endChar;
-
-		return len;
-	},
-
-	doAccess(path, amode) {
-		if (amode & ~7) {
-			return -ERRNO_CODES.EINVAL;
-		}
-		
-		const {node} = FS.lookupPath(path, {follow: true});
-
-		let perms = '';
-
-		if (amode & 4) {
-			perms += 'r';
-		}
-
-		if (amode & 2) {
-			perms += 'w';
-		}
-
-		if (amode & 1) {
-			perms += 'x';
-		}
-
-		if (perms && FS.nodePermissions(node, perms)) {
-			return -ERRNO_CODES.EACCES;
-		}
-
-		return 0;
-	},
-
-	doDup(path, flags, suggestFD) {
-		const suggest = FS.getStream(suggestFD);
-
-		if (suggest) {
-			FS.close(suggest);
-		}
-
-		return FS.open(path, flags, 0, suggestFD, suggestFD).fd;
-	},
-
-	doReadv(stream, iov, iovcnt, offset) {
-		let ret = 0;
-
-		for (let i = 0; i < iovcnt; i++) {
-			const ptr  = memory.exposed.HEAP32[iov + i * 8 >> 2];
-			const len  = memory.exposed.HEAP32[iov + (i * 8 + 4) >> 2];
-			const curr = FS.read(stream, memory.exposed.HEAP8, ptr, len, offset);
-
-			if (curr < 0) { return -1; }
-
-			ret += curr;
-
-			if (curr < len) { break; }
-		}
-
-		return ret;
-	},
-
-	doWritev(stream, iov, iovcnt, offset) {
-		let ret = 0;
-
-		for (let i = 0; i < iovcnt; i++) {
-			const ptr  = memory.exposed.HEAP32[iov + i * 8 >> 2];
-			const len  = memory.exposed.HEAP32[iov + (i * 8 + 4) >> 2];
-			const curr = FS.write(stream, memory.exposed.HEAP8, ptr, len, offset);
-
-			if (curr < 0) { return - 1; }
-
-			ret += curr;
-		}
-
-		return ret;
-	},
-
-	varargs: 0,
-
-	get(varargs) {
-		SYSCALLS.varargs += 4;
-
-		return memory.exposed.HEAP32[SYSCALLS.varargs - 4 >> 2];
-	},
-
-	getStr() {
-		return memory.Pointer_stringify(SYSCALLS.get());
-	},
-
-	getStreamFromFD() { 
-		const stream = FS.getStream(SYSCALLS.get());
-
-		if (!stream) {
-			throw new utils.ErrnoError(ERRNO_CODES.EBADF);
-		}
-
-		return stream;
-	},
-
-	// NOT used. There is no 'SOCKFS' code.
-
-	// getSocketFromFD() {
-	// 	const socket = SOCKFS.getSocket(SYSCALLS.get());
-
-	// 	if (!socket) {
-	// 		throw new utils.ErrnoError(ERRNO_CODES.EBADF);
-	// 	}
-
-	// 	return socket;
-	// },
-
-	// NOT used. There is no code for '__read_sockaddr' or 'DNS'.
-
-	// getSocketAddress(allowNull) {
-	// 	const addrp 	= SYSCALLS.get();
-	// 	const addrlen = SYSCALLS.get();
-
-	// 	if (allowNull && addrp === 0) { return null; }
-
-	// 	const info = __read_sockaddr(addrp, addrlen);
-
-	// 	if (info.errno) {
-	// 		throw new utils.ErrnoError(info.errno);
-	// 	}
-
-	// 	info.addr = DNS.lookup_addr(info.addr) || info.addr;
-
-	// 	return info;
-	// },
-
-	get64() {
-		const low  = SYSCALLS.get();
-		const high = SYSCALLS.get();
-
-		if (low >= 0) {
-			utils.assert(high === 0);
+		if (dirfd === -100) {
+			dir = FS.cwd();
 		}
 		else {
-			utils.assert(high === -1);
+			const dirstream = FS.getStream(dirfd);
+
+			if (!dirstream) {
+				throw new utils.ErrnoError(ERRNO_CODES.EBADF);
+			}
+
+			dir = dirstream.path;
 		}
 
-		return low;
-	},
-
-	getZero() {
-		utils.assert(SYSCALLS.get() === 0);
+		path = PATH.join2(dir, path);
 	}
+
+	return path;
 };
 
+const doStat = (func, path, buf) => {
+
+	let stat;
+
+	try {
+		stat = func(path);
+	}
+	catch (error) {
+		if (error && error.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(error.node))) {
+			return -ERRNO_CODES.ENOTDIR;
+		}
+
+		throw error;
+	}
+
+	memory.exposed.HEAP32[buf >> 2] 		 = stat.dev;
+	memory.exposed.HEAP32[buf + 4 >> 2]  = 0;
+	memory.exposed.HEAP32[buf + 8 >> 2]  = stat.ino;
+	memory.exposed.HEAP32[buf + 12 >> 2] = stat.mode;
+	memory.exposed.HEAP32[buf + 16 >> 2] = stat.nlink;
+	memory.exposed.HEAP32[buf + 20 >> 2] = stat.uid;
+	memory.exposed.HEAP32[buf + 24 >> 2] = stat.gid;
+	memory.exposed.HEAP32[buf + 28 >> 2] = stat.rdev;
+	memory.exposed.HEAP32[buf + 32 >> 2] = 0;
+	memory.exposed.HEAP32[buf + 36 >> 2] = stat.size;
+	memory.exposed.HEAP32[buf + 40 >> 2] = 4096;
+	memory.exposed.HEAP32[buf + 44 >> 2] = stat.blocks;
+	memory.exposed.HEAP32[buf + 48 >> 2] = stat.atime.getTime() / 1e3 | 0;
+	memory.exposed.HEAP32[buf + 52 >> 2] = 0;
+	memory.exposed.HEAP32[buf + 56 >> 2] = stat.mtime.getTime() / 1e3 | 0;
+	memory.exposed.HEAP32[buf + 60 >> 2] = 0;
+	memory.exposed.HEAP32[buf + 64 >> 2] = stat.ctime.getTime() / 1e3 | 0;
+	memory.exposed.HEAP32[buf + 68 >> 2] = 0;
+	memory.exposed.HEAP32[buf + 72 >> 2] = stat.ino;
+
+	return 0;
+};
+
+const doMsync = (addr, stream, len, flags) => {
+	const buffer = new Uint8Array(memory.exposed.HEAPU8.subarray(addr, addr + len));
+
+	FS.msync(stream, buffer, 0, len, flags);
+};
+
+const doMkdir = (path, mode) => {
+	path = PATH.normalize(path);
+
+	if (path[path.length - 1] === '/') {
+		path = path.substr(0, path.length - 1);
+	}
+
+	FS.mkdir(path, mode, 0);
+
+	return 0;
+};
+
+const doMknod = (path, mode, dev) => {
+	switch (mode & 61440) {
+		case 32768:
+		case 8192:
+		case 24576:
+		case 4096:
+		case 49152:
+			break;
+		default:
+			return -ERRNO_CODES.EINVAL;
+	}
+
+	FS.mknod(path, mode, dev);
+
+	return 0;
+};
+
+const doReadlink = (path, buf, bufsize) => {
+	if (bufsize <= 0) {
+		return -ERRNO_CODES.EINVAL;
+	}
+
+	const ret 		= FS.readlink(path);
+	const len 		= Math.min(bufsize, utils.lengthBytesUTF8(ret));
+	const endChar = memory.exposed.HEAP8[buf + len];
+
+	stringToUTF8(ret, buf, bufsize + 1);
+
+	memory.exposed.HEAP8[buf + len] = endChar;
+
+	return len;
+};
+
+const doAccess = (path, amode) => {
+	if (amode & ~7) {
+		return -ERRNO_CODES.EINVAL;
+	}
+	
+	const {node} = FS.lookupPath(path, {follow: true});
+
+	let perms = '';
+
+	if (amode & 4) {
+		perms += 'r';
+	}
+
+	if (amode & 2) {
+		perms += 'w';
+	}
+
+	if (amode & 1) {
+		perms += 'x';
+	}
+
+	if (perms && FS.nodePermissions(node, perms)) {
+		return -ERRNO_CODES.EACCES;
+	}
+
+	return 0;
+};
+
+const doDup = (path, flags, suggestFD) => {
+	const suggest = FS.getStream(suggestFD);
+
+	if (suggest) {
+		FS.close(suggest);
+	}
+
+	return FS.open(path, flags, 0, suggestFD, suggestFD).fd;
+};
+
+const doReadv = (stream, iov, iovcnt, offset) => {
+	let ret = 0;
+
+	for (let i = 0; i < iovcnt; i++) {
+		const ptr  = memory.exposed.HEAP32[iov + i * 8 >> 2];
+		const len  = memory.exposed.HEAP32[iov + (i * 8 + 4) >> 2];
+		const curr = FS.read(stream, memory.exposed.HEAP8, ptr, len, offset);
+
+		if (curr < 0) { return -1; }
+
+		ret += curr;
+
+		if (curr < len) { break; }
+	}
+
+	return ret;
+};
+
+const doWritev = (stream, iov, iovcnt, offset) => {
+	let ret = 0;
+
+	for (let i = 0; i < iovcnt; i++) {
+		const ptr  = memory.exposed.HEAP32[iov + i * 8 >> 2];
+		const len  = memory.exposed.HEAP32[iov + (i * 8 + 4) >> 2];
+		const curr = FS.write(stream, memory.exposed.HEAP8, ptr, len, offset);
+
+		if (curr < 0) { return - 1; }
+
+		ret += curr;
+	}
+
+	return ret;
+};
+
+const get = () => {
+	varargs += 4;
+
+	return memory.exposed.HEAP32[varargs - 4 >> 2];
+};
+
+const getStr = () => memory.Pointer_stringify(get());
+
+const getStreamFromFD = () => { 
+	const stream = FS.getStream(get());
+
+	if (!stream) {
+		throw new utils.ErrnoError(ERRNO_CODES.EBADF);
+	}
+
+	return stream;
+};
+
+const get64 = () => {
+	const low  = get();
+	const high = get();
+
+	if (low >= 0) {
+		utils.assert(high === 0);
+	}
+	else {
+		utils.assert(high === -1);
+	}
+
+	return low;
+};
+
+const getZero = () => {
+	utils.assert(get() === 0);
+};
 
 const handleError = error => {
 	if (typeof FS === 'undefined' || !(error instanceof FS.ErrnoError)) {
@@ -292,15 +253,12 @@ const handleError = error => {
 	return -error.errno;
 };
 
-const ___syscall10 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
 
-
-	// console.log('___syscall10 which: ', which, ' varargs: ', varargs);
-
+const ___syscall10 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const path = SYSCALLS.getStr();
+		const path = getStr();
 
 		FS.unlink(path);
 
@@ -311,30 +269,22 @@ const ___syscall10 = (which, varargs) => {
 	}
 };
 
-const ___syscall114 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall114 which: ', which, ' varargs: ', varargs);
-
+const ___syscall114 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		utils.abort('cannot wait on child processes');
+		utils.abort('Cannot wait on child processes.');
 	}
 	catch (error) {
 		return handleError(error);
 	}
 };
 
-const ___syscall118 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall118 which: ', which, ' varargs: ', varargs);
-
+const ___syscall118 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		SYSCALLS.getStreamFromFD();
+		getStreamFromFD();
 
 		return 0;
 	}
@@ -343,19 +293,15 @@ const ___syscall118 = (which, varargs) => {
 	}
 };
 
-const ___syscall140 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall140 which: ', which, ' varargs: ', varargs);
-
+const ___syscall140 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream 			= SYSCALLS.getStreamFromFD();
-		const offset_high = SYSCALLS.get();
-		const offset_low 	= SYSCALLS.get();
-		const result 			= SYSCALLS.get();
-		const whence 			= SYSCALLS.get();
+		const stream 			= getStreamFromFD();
+		const offset_high = get();
+		const offset_low 	= get();
+		const result 			= get();
+		const whence 			= get();
 		const offset 			= offset_low;
 
 		FS.llseek(stream, offset, whence);
@@ -372,54 +318,42 @@ const ___syscall140 = (which, varargs) => {
 	}
 };
 
-const ___syscall145 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall145 which: ', which, ' varargs: ', varargs);
-
+const ___syscall145 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const iov 	 = SYSCALLS.get();
-		const iovcnt = SYSCALLS.get();
+		const stream = getStreamFromFD();
+		const iov 	 = get();
+		const iovcnt = get();
 
-		return SYSCALLS.doReadv(stream, iov, iovcnt);
+		return doReadv(stream, iov, iovcnt);
 	}
 	catch (error) {
 		return handleError(error);
 	}
 };
 
-const ___syscall146 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall146 which: ', which, ' varargs: ', varargs);
-
+const ___syscall146 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const iov 	 = SYSCALLS.get();
-		const iovcnt = SYSCALLS.get();
+		const stream = getStreamFromFD();
+		const iov 	 = get();
+		const iovcnt = get();
 
-		return SYSCALLS.doWritev(stream, iov, iovcnt);
+		return doWritev(stream, iov, iovcnt);
 	}
 	catch (error) {
 		return handleError(error);
 	}
 };
 
-const ___syscall15 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall15 which: ', which, ' varargs: ', varargs);
-
+const ___syscall15 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const path = SYSCALLS.getStr();
-		const mode = SYSCALLS.get();
+		const path = getStr();
+		const mode = get();
 
 		FS.chmod(path, mode);
 
@@ -430,19 +364,15 @@ const ___syscall15 = (which, varargs) => {
 	}
 };
 
-const ___syscall180 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall180 which: ', which, ' varargs: ', varargs);
-
+const ___syscall180 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const buf 	 = SYSCALLS.get();
-		const count  = SYSCALLS.get();
-		const zero 	 = SYSCALLS.getZero();
-		const offset = SYSCALLS.get64();
+		const stream = getStreamFromFD();
+		const buf 	 = get();
+		const count  = get();
+		const zero 	 = getZero();
+		const offset = get64();
 
 		return FS.read(stream, memory.exposed.HEAP8, buf, count, offset);
 	}
@@ -451,19 +381,15 @@ const ___syscall180 = (which, varargs) => {
 	}
 };
 
-const ___syscall181 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall181 which: ', which, ' varargs: ', varargs);
-
+const ___syscall181 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const buf 	 = SYSCALLS.get();
-		const count  = SYSCALLS.get();
-		const zero 	 = SYSCALLS.getZero();
-		const offset = SYSCALLS.get64();
+		const stream = getStreamFromFD();
+		const buf 	 = get();
+		const count  = get();
+		const zero 	 = getZero();
+		const offset = get64();
 
 		return FS.write(stream, memory.exposed.HEAP8, buf, count, offset);
 	}
@@ -472,16 +398,12 @@ const ___syscall181 = (which, varargs) => {
 	}
 };
 
-const ___syscall183 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall183 which: ', which, ' varargs: ', varargs);
-
+const ___syscall183 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const buf  = SYSCALLS.get();
-		const size = SYSCALLS.get();
+		const buf  = get();
+		const size = get();
 
 		if (size === 0) {
 			return -ERRNO_CODES.EINVAL;
@@ -503,21 +425,17 @@ const ___syscall183 = (which, varargs) => {
 	}
 };
 
-const ___syscall191 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall191 which: ', which, ' varargs: ', varargs);
-
+const ___syscall191 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const resource = SYSCALLS.get();
-		const rlim 		 = SYSCALLS.get();
+		const resource = get();
+		const rlim 		 = get();
 
-		memory.exposed.HEAP32[rlim >> 2]      =- 1;
-		memory.exposed.HEAP32[rlim + 4 >> 2]  =- 1;
-		memory.exposed.HEAP32[rlim + 8 >> 2]  =- 1;
-		memory.exposed.HEAP32[rlim + 12 >> 2] =- 1;
+		memory.exposed.HEAP32[rlim >> 2]      = -1;
+		memory.exposed.HEAP32[rlim + 4 >> 2]  = -1;
+		memory.exposed.HEAP32[rlim + 8 >> 2]  = -1;
+		memory.exposed.HEAP32[rlim + 12 >> 2] = -1;
 
 		return 0;
 	}
@@ -526,20 +444,16 @@ const ___syscall191 = (which, varargs) => {
 	}
 };
 
-const ___syscall192 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall192 which: ', which, ' varargs: ', varargs);
-
+const ___syscall192 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const addr 	= SYSCALLS.get();
-		const len 	= SYSCALLS.get();
-		const prot 	= SYSCALLS.get();
-		const flags = SYSCALLS.get();
-		const fd 		= SYSCALLS.get();
-		let off 		= SYSCALLS.get();
+		const addr 	= get();
+		const len 	= get();
+		const prot 	= get();
+		const flags = get();
+		const fd 		= get();
+		let off 		= get();
 
 		off <<= 12;
 
@@ -569,7 +483,7 @@ const ___syscall192 = (which, varargs) => {
 			allocated = res.allocated;
 		}
 
-		SYSCALLS.mappings[ptr] = {
+		mappings[ptr] = {
 			malloc: ptr,
 			len,
 			allocated,
@@ -584,36 +498,28 @@ const ___syscall192 = (which, varargs) => {
 	}
 };
 
-const ___syscall195 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall195 which: ', which, ' varargs: ', varargs);
-
+const ___syscall195 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const path = SYSCALLS.getStr();
-		const buf  = SYSCALLS.get();
+		const path = getStr();
+		const buf  = get();
 
-		return SYSCALLS.doStat(FS.stat, path, buf);
+		return doStat(FS.stat, path, buf);
 	}
 	catch (error) {
 		return handleError(error);
 	}
 };
 
-const ___syscall197 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall197 which: ', which, ' varargs: ', varargs);
-
+const ___syscall197 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const buf 	 = SYSCALLS.get();
+		const stream = getStreamFromFD();
+		const buf 	 = get();
 
-		return SYSCALLS.doStat(FS.stat, stream.path, buf);
+		return doStat(FS.stat, stream.path, buf);
 	}
 	catch (error) {
 		return handleError(error);
@@ -621,12 +527,8 @@ const ___syscall197 = (which, varargs) => {
 };
 
 
-const ___syscall20 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall20 which: ', which, ' varargs: ', varargs);
-
+const ___syscall20 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
 		const PROCINFO = {ppid: 1, pid: 42, sid: 42, pgid: 42};
@@ -638,17 +540,13 @@ const ___syscall20 = (which, varargs) => {
 	}
 };
 
-const ___syscall220 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall220 which: ', which, ' varargs: ', varargs);
-
+const ___syscall220 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const dirp 	 = SYSCALLS.get();
-		const count  = SYSCALLS.get();
+		const stream = getStreamFromFD();
+		const dirp 	 = get();
+		const count  = get();
 
 		if (!stream.getdents) {
 			stream.getdents = FS.readdir(stream.path);
@@ -695,20 +593,16 @@ const ___syscall220 = (which, varargs) => {
 	}
 };
 
-const ___syscall221 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall221 which: ', which, ' varargs: ', varargs);
-
+const ___syscall221 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const cmd 	 = SYSCALLS.get();
+		const stream = getStreamFromFD();
+		const cmd 	 = get();
 
 		switch (cmd) {
 			case 0: {
-				const arg = SYSCALLS.get();
+				const arg = get();
 
 				if (arg < 0) {
 					return -ERRNO_CODES.EINVAL;
@@ -724,14 +618,14 @@ const ___syscall221 = (which, varargs) => {
 			case 3:
 				return stream.flags;
 			case 4: {
-				const arg = SYSCALLS.get();
+				const arg = get();
 
 				stream.flags |= arg;
 
 				return 0;
 			};
 			case 12: {
-				const arg 	 = SYSCALLS.get();
+				const arg 	 = get();
 				const offset = 0;
 
 				memory.exposed.HEAP16[arg + offset >> 1] = 2;
@@ -758,17 +652,13 @@ const ___syscall221 = (which, varargs) => {
 	}
 };
 
-const ___syscall3 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall3 which: ', which, ' varargs: ', varargs);
-
+const ___syscall3 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const buf 	 = SYSCALLS.get();
-		const count  = SYSCALLS.get();
+		const stream = getStreamFromFD();
+		const buf 	 = get();
+		const count  = get();
 
 		return FS.read(stream, memory.exposed.HEAP8, buf, count);
 	}
@@ -777,18 +667,14 @@ const ___syscall3 = (which, varargs) => {
 	}
 };
 
-const ___syscall324 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall324 which: ', which, ' varargs: ', varargs);
-
+const ___syscall324 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const mode 	 = SYSCALLS.get();
-		const offset = SYSCALLS.get64();
-		const len 	 = SYSCALLS.get64();
+		const stream = getStreamFromFD();
+		const mode 	 = get();
+		const offset = get64();
+		const len 	 = get64();
 
 		utils.assert(mode === 0);
 
@@ -801,42 +687,34 @@ const ___syscall324 = (which, varargs) => {
 	}
 };
 
-const ___syscall33 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall33 which: ', which, ' varargs: ', varargs);
-
+const ___syscall33 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const path 	= SYSCALLS.getStr();
-		const amode = SYSCALLS.get();
+		const path 	= getStr();
+		const amode = get();
 
-		return SYSCALLS.doAccess(path, amode);
+		return doAccess(path, amode);
 	}
 	catch (error) {
 		return handleError(error);
 	}
 };
 
-const ___syscall340 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall340 which: ', which, ' varargs: ', varargs);
-
+const ___syscall340 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const pid 			= SYSCALLS.get();
-		const resource 	= SYSCALLS.get();
-		const new_limit = SYSCALLS.get();
-		const old_limit = SYSCALLS.get();
+		const pid 			= get();
+		const resource 	= get();
+		const new_limit = get();
+		const old_limit = get();
 
 		if (old_limit) {
-			memory.exposed.HEAP32[old_limit >> 2] 		 =- 1;
-			memory.exposed.HEAP32[old_limit + 4 >> 2]  =- 1;
-			memory.exposed.HEAP32[old_limit + 8 >> 2]  =- 1;
-			memory.exposed.HEAP32[old_limit + 12 >> 2] =- 1;
+			memory.exposed.HEAP32[old_limit >> 2] 		 = -1;
+			memory.exposed.HEAP32[old_limit + 4 >> 2]  = -1;
+			memory.exposed.HEAP32[old_limit + 8 >> 2]  = -1;
+			memory.exposed.HEAP32[old_limit + 12 >> 2] = -1;
 		}
 
 		return 0;
@@ -846,16 +724,12 @@ const ___syscall340 = (which, varargs) => {
 	}
 };
 
-const ___syscall38 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall38 which: ', which, ' varargs: ', varargs);
-
+const ___syscall38 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const old_path = SYSCALLS.getStr();
-		const new_path = SYSCALLS.getStr();
+		const old_path = getStr();
+		const new_path = getStr();
 
 		FS.rename(old_path, new_path);
 
@@ -866,17 +740,13 @@ const ___syscall38 = (which, varargs) => {
 	}
 };
 
-const ___syscall4 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall4 which: ', which, ' varargs: ', varargs);
-
+const ___syscall4 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const buf 	 = SYSCALLS.get();
-		const count  = SYSCALLS.get();
+		const stream = getStreamFromFD();
+		const buf 	 = get();
+		const count  = get();
 
 		return FS.write(stream, memory.exposed.HEAP8, buf, count);
 	}
@@ -885,17 +755,13 @@ const ___syscall4 = (which, varargs) => {
 	}
 }
 
-const ___syscall5 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall5 which: ', which, ' varargs: ', varargs);
-
+const ___syscall5 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const pathname = SYSCALLS.getStr();
-		const flags 	 = SYSCALLS.get();
-		const mode 		 = SYSCALLS.get();
+		const pathname = getStr();
+		const flags 	 = get();
+		const mode 		 = get();
 		const stream 	 = FS.open(pathname, flags, mode);
 
 		return stream.fd;
@@ -905,16 +771,12 @@ const ___syscall5 = (which, varargs) => {
 	}
 };
 
-const ___syscall54 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall54 which: ', which, ' varargs: ', varargs);
-
+const ___syscall54 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
-		const op 		 = SYSCALLS.get();
+		const stream = getStreamFromFD();
+		const op 		 = get();
 
 		switch (op) {
 			case 21509:
@@ -942,7 +804,7 @@ const ___syscall54 = (which, varargs) => {
 					return -ERRNO_CODES.ENOTTY;
 				}
 
-				const argp = SYSCALLS.get();
+				const argp = get();
 
 				memory.exposed.HEAP32[argp >> 2] = 0;
 
@@ -956,7 +818,7 @@ const ___syscall54 = (which, varargs) => {
 				return -ERRNO_CODES.EINVAL;
 			};
 			case 21531: {
-				const argp = SYSCALLS.get();
+				const argp = get();
 
 				return FS.ioctl(stream, op, argp);
 			};
@@ -983,15 +845,11 @@ const ___syscall54 = (which, varargs) => {
 	}
 };
 
-const ___syscall6 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall16 which: ', which, ' varargs: ', varargs);
-
+const ___syscall6 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const stream = SYSCALLS.getStreamFromFD();
+		const stream = getStreamFromFD();
 
 		FS.close(stream);
 
@@ -1002,16 +860,12 @@ const ___syscall6 = (which, varargs) => {
 	}
 };
 
-const ___syscall77 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall77 which: ', which, ' varargs: ', varargs);
-
+const ___syscall77 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const who 	= SYSCALLS.get();
-		const usage = SYSCALLS.get();
+		const who 	= get();
+		const usage = get();
 
 		utils.exposed._memset(usage, 0, 136);
 
@@ -1027,16 +881,12 @@ const ___syscall77 = (which, varargs) => {
 	}
 };
 
-const ___syscall83 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall83 which: ', which, ' varargs: ', varargs);
-
+const ___syscall83 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const target 	 = SYSCALLS.getStr();
-		const linkpath = SYSCALLS.getStr();
+		const target 	 = getStr();
+		const linkpath = getStr();
 
 		FS.symlink(target, linkpath);
 
@@ -1047,45 +897,37 @@ const ___syscall83 = (which, varargs) => {
 	}
 };
 
-const ___syscall85 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall85 which: ', which, ' varargs: ', varargs);
-
+const ___syscall85 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const path 		= SYSCALLS.getStr();
-		const buf 		= SYSCALLS.get();
-		const bufsize = SYSCALLS.get();
+		const path 		= getStr();
+		const buf 		= get();
+		const bufsize = get();
 
-		return SYSCALLS.doReadlink(path, buf, bufsize);
+		return doReadlink(path, buf, bufsize);
 	}
 	catch (error) {
 		return handleError(error);
 	}
 };
 
-const ___syscall91 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall91 which: ', which, ' varargs: ', varargs);
-
+const ___syscall91 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const addr = SYSCALLS.get();
-		const len  = SYSCALLS.get();
-		const info = SYSCALLS.mappings[addr];
+		const addr = get();
+		const len  = get();
+		const info = mappings[addr];
 
 		if (!info) { return 0; }
 
 		if (len === info.len) {
 			const stream = FS.getStream(info.fd);
 
-			SYSCALLS.doMsync(addr, stream, len, info.flags);
+			doMsync(addr, stream, len, info.flags);
 			FS.munmap(stream);
-			SYSCALLS.mappings[addr] = null;
+			mappings[addr] = null;
 
 			if (info.allocated) {
 				utils.exposed._free(info.malloc);
@@ -1099,16 +941,12 @@ const ___syscall91 = (which, varargs) => {
 	}
 };
 
-const ___syscall94 = (which, varargs) => {
-	SYSCALLS.varargs = varargs;
-
-
-	// console.log('___syscall94 which: ', which, ' varargs: ', varargs);
-
+const ___syscall94 = (which, vArgs) => {
+	varargs = vArgs;
 
 	try {
-		const fd 	 = SYSCALLS.get();
-		const mode = SYSCALLS.get();
+		const fd 	 = get();
+		const mode = get();
 
 		FS.fchmod(fd, mode);
 

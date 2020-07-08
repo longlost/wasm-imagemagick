@@ -1,28 +1,21 @@
 
 
-import utils 	 		 from './utils.js';
-import memory  		 from './memory.js';
-import runtime 		 from './runtime.js';
-import environment from './environment.js';
-import signal 		 from './signal.js';
-import time 			 from './time.js';
-import date 			 from './date.js';
-import syscalls 	 from './syscalls.js';
-import llvm 			 from './llvm.js';
-import invoke 		 from './invoke.js';
-import mod 	 	 		 from './module.js';
+import mod 	 	 		 	 from './module.js';
+import utils 	 		 	 from './utils.js';
+import memory  		 	 from './memory.js';
+import environment 	 from './environment.js';
+import signal 		 	 from './signal.js';
+import time 			 	 from './time.js';
+import date 			 	 from './date.js';
+import syscalls 	 	 from './syscalls.js';
+import llvm 			 	 from './llvm.js';
+import invoke 		 	 from './invoke.js';
+import integrateWasm from './integrate.js';
 
 
-const exposed = {
-	___emscripten_environ_constructor: null
-};
+const setAsm = async () => {
 
-
-const setAsm = () => {
-
-	mod.Module['asmGlobalArg'] = {};
-
-	mod.Module['asmLibraryArg'] = {
+	const asmLibrary = {
 		'abort': 									 utils.abort,
 		'enlargeMemory': 					 memory.enlargeMemory,
 		'getTotalMemory': 				 memory.getTotalMemory,
@@ -123,187 +116,62 @@ const setAsm = () => {
 		'_times': 								 time._times,
 		'_waitpid': 							 environment._waitpid,
 		'DYNAMICTOP_PTR': 				 memory.exposed.DYNAMICTOP_PTR,
-		'STACKTOP': 							 runtime.exposed.STACKTOP
+		'STACKTOP': 							 memory.exposed.STACKTOP
 	};
 
 
-	const asm = mod.Module['asm'](mod.Module['asmGlobalArg'], mod.Module['asmLibraryArg'], memory.exposed.buffer);
+	const asm = await integrateWasm(
+		asmLibrary, 
+		memory.exposed.buffer
+	);
 
-	mod.Module['asm'] = asm;
 
-	exposed.___emscripten_environ_constructor = mod.Module['___emscripten_environ_constructor'] = (function() {
-		return mod.Module['asm']['___emscripten_environ_constructor'].apply(null, arguments);
-	});
+	utils.exposed._free 														= asm._free;
+	utils.exposed._memset 													= asm._memset;
+	utils.exposed.___emscripten_environ_constructor = asm.___emscripten_environ_constructor;
+	memory.exposed._emscripten_replace_memory 			= asm._emscripten_replace_memory;
+	memory.exposed._malloc 													= asm._malloc;
+	memory.exposed.stackAlloc 											= asm.stackAlloc;
+	time.exposed.__get_daylight 										= asm.__get_daylight;
+	time.exposed.__get_timezone 										= asm.__get_timezone;
+	time.exposed.__get_tzname 											= asm.__get_tzname;
+	syscalls.exposed._memalign 											= asm._memalign;
+	invoke.exposed.stackRestore 										= asm.stackRestore;
+	invoke.exposed.stackSave 												= asm.stackSave;
 
-	time.exposed.__get_daylight = mod.Module['__get_daylight'] = (function() {
-		return mod.Module['asm']['__get_daylight'].apply(null, arguments);
-	});
-
-	time.exposed.__get_timezone = mod.Module['__get_timezone'] = (function() {
-		return mod.Module['asm']['__get_timezone'].apply(null, arguments);
-	});
-
-	time.exposed.__get_tzname = mod.Module['__get_tzname'] = (function() {
-		return mod.Module['asm']['__get_tzname'].apply(null, arguments);
-	});
-
-	memory.exposed._emscripten_replace_memory = mod.Module['_emscripten_replace_memory'] = (function() {
-		return mod.Module['asm']['_emscripten_replace_memory'].apply(null, arguments);
-	});
-
-	utils.exposed._free = mod.Module['_free'] = (function() {
-		return mod.Module['asm']['_free'].apply(null, arguments);
-	});
-
-	memory.exposed._malloc = mod.Module['_malloc'] = (function() {
-		return mod.Module['asm']['_malloc'].apply(null, arguments);
-	});
-
-	syscalls.exposed._memalign = mod.Module['_memalign'] = (function() {
-		return mod.Module['asm']['_memalign'].apply(null, arguments);
-	});
-
-	utils.exposed._memset = mod.Module['_memset'] = (function() {
-		return mod.Module['asm']['_memset'].apply(null, arguments);
-	});
-
-	memory.exposed.stackAlloc = mod.Module['stackAlloc'] = (function() {
-		return mod.Module['asm']['stackAlloc'].apply(null, arguments);
-	});
-
-	invoke.exposed.stackRestore = mod.Module['stackRestore'] = (function() {
-		return mod.Module['asm']['stackRestore'].apply(null, arguments);
-	});
-
-	invoke.exposed.stackSave = mod.Module['stackSave'] = (function() {
-		return mod.Module['asm']['stackSave'].apply(null, arguments);
-	});
-
-	mod.Module['___errno_location'] = (function() {
-		return mod.Module['asm']['___errno_location'].apply(null, arguments);
-	});
-
-	mod.Module['_main'] = (function() {
-		return mod.Module['asm']['_main'].apply(null, arguments);
-	});
-
-	mod.Module['setThrew'] = (function() {
-		return mod.Module['asm']['setThrew'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_dii'] = (function() {
-		return mod.Module['asm']['dynCall_dii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_i'] = (function() {
-		return mod.Module['asm']['dynCall_i'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_ii'] = (function() {
-		return mod.Module['asm']['dynCall_ii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iifi'] = (function() {
-		return mod.Module['asm']['dynCall_iifi'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iii'] = (function() {
-		return mod.Module['asm']['dynCall_iii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iiii'] = (function() {
-		return mod.Module['asm']['dynCall_iiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iiiii'] = (function() {
-		return mod.Module['asm']['dynCall_iiiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iiiiii'] = (function() {
-		return mod.Module['asm']['dynCall_iiiiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iiiiiii'] = (function() {
-		return mod.Module['asm']['dynCall_iiiiiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iiiiiiii'] = (function() {
-		return mod.Module['asm']['dynCall_iiiiiiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iiiiiiiii'] = (function() {
-		return mod.Module['asm']['dynCall_iiiiiiiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iiiiiiiiii'] = (function() {
-		return mod.Module['asm']['dynCall_iiiiiiiiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iiiiiiiiiii'] = (function() {
-		return mod.Module['asm']['dynCall_iiiiiiiiiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iiijj'] = (function() {
-		return mod.Module['asm']['dynCall_iiijj'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_iij'] = (function() {
-		return mod.Module['asm']['dynCall_iij'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_ji'] = (function() {
-		return mod.Module['asm']['dynCall_ji'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_v'] = (function() {
-		return mod.Module['asm']['dynCall_v'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_vi'] = (function() {
-		return mod.Module['asm']['dynCall_vi'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_vii'] = (function() {
-		return mod.Module['asm']['dynCall_vii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_viid'] = (function() {
-		return mod.Module['asm']['dynCall_viid'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_viidddddddd'] = (function() {
-		return mod.Module['asm']['dynCall_viidddddddd'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_viii'] = (function() {
-		return mod.Module['asm']['dynCall_viii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_viiii'] = (function() {
-		return mod.Module['asm']['dynCall_viiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_viiiii'] = (function() {
-		return mod.Module['asm']['dynCall_viiiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_viiiiii'] = (function() {
-		return mod.Module['asm']['dynCall_viiiiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_viiiiiiiii'] = (function() {
-		return mod.Module['asm']['dynCall_viiiiiiiii'].apply(null, arguments);
-	});
-
-	mod.Module['dynCall_vij'] = (function() {
-		return mod.Module['asm']['dynCall_vij'].apply(null, arguments);
-	});
-
-	mod.Module['asm'] = asm;
+	mod.Module['___errno_location'] 	= asm.___errno_location;
+	mod.Module['_main'] 							= asm._main;
+	mod.Module['setThrew'] 						= asm.setThrew;
+	mod.Module['dynCall_dii'] 				= asm.dynCall_dii;
+	mod.Module['dynCall_i'] 					= asm.dynCall_i;
+	mod.Module['dynCall_ii'] 					= asm.dynCall_ii;
+	mod.Module['dynCall_iifi'] 				= asm.dynCall_iifi;
+	mod.Module['dynCall_iii'] 				= asm.dynCall_iii;
+	mod.Module['dynCall_iiii'] 				= asm.dynCall_iiii;
+	mod.Module['dynCall_iiiii'] 			= asm.dynCall_iiiii;
+	mod.Module['dynCall_iiiiii'] 			= asm.dynCall_iiiiii;
+	mod.Module['dynCall_iiiiiii'] 		= asm.dynCall_iiiiiii;
+	mod.Module['dynCall_iiiiiiii'] 		= asm.dynCall_iiiiiiii;
+	mod.Module['dynCall_iiiiiiiii'] 	= asm.dynCall_iiiiiiiii;
+	mod.Module['dynCall_iiiiiiiiii'] 	= asm.dynCall_iiiiiiiiii;
+	mod.Module['dynCall_iiiiiiiiiii'] = asm.dynCall_iiiiiiiiiii;
+	mod.Module['dynCall_iiijj'] 			= asm.dynCall_iiijj;
+	mod.Module['dynCall_iij'] 				= asm.dynCall_iij;
+	mod.Module['dynCall_ji'] 					= asm.dynCall_ji;
+	mod.Module['dynCall_v'] 					= asm.dynCall_v;
+	mod.Module['dynCall_vi'] 					= asm.dynCall_vi;
+	mod.Module['dynCall_vii'] 				= asm.dynCall_vii;
+	mod.Module['dynCall_viid'] 				= asm.dynCall_viid;
+	mod.Module['dynCall_viidddddddd'] = asm.dynCall_viidddddddd;
+	mod.Module['dynCall_viii'] 				= asm.dynCall_viii;
+	mod.Module['dynCall_viiii'] 			= asm.dynCall_viiii;
+	mod.Module['dynCall_viiiii'] 			= asm.dynCall_viiiii;
+	mod.Module['dynCall_viiiiii'] 		= asm.dynCall_viiiiii;
+	mod.Module['dynCall_viiiiiiiii'] 	= asm.dynCall_viiiiiiiii;
+	mod.Module['dynCall_vij'] 				= asm.dynCall_vij;
 };
 
 
 export default {
-	exposed,
 	setAsm
 };

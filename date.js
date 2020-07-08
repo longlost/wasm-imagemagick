@@ -94,11 +94,14 @@ const sgn = value => value < 0 ? -1 : value > 0 ? 1 : 0;
 
 const compareByDay = (date1, date2) => {
 	let compare;
+	
 
 	// TODO:
 	//
 	// Rewrite this.
 	// This is such bad practice to have assignments in an if statement!
+
+
 	if ((compare = sgn(date1.getFullYear() - date2.getFullYear())) === 0) {
 		if ((compare = sgn(date1.getMonth() - date2.getMonth())) === 0) {
 			compare = sgn(date1.getDate() - date2.getDate());

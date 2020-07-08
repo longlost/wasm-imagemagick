@@ -7,9 +7,11 @@ import {ERRNO_CODES, ERRNO_MESSAGES} from './constants.js';
 const exposed = {
 	ABORT: 			false,
 	EXITSTATUS: 0,
-	// Set after 'setAsm' called 'asm'.
+	___emscripten_environ_constructor: null,
+	// Set after 'setAsm' called in 'wasm-interface.js'.
 	_free: 	 null, // Used in 'syscall.js' and 'environment.js' files.
 	_memset: null  // Used in 'syscall.js' and 'time.js' files.
+
 };
 
 
@@ -70,6 +72,10 @@ const assert = (condition, text) => {
 	if (!condition) {
 		abort(`Assertion failed: ${text}`);
 	}
+};
+
+const quit = (status, toThrow) => {
+	throw toThrow;
 };
 
 
@@ -299,6 +305,7 @@ export default {
 	intArrayFromString,
 	lengthBytesUTF8,
 	out,
+	quit,
 	registerDevice,
 	stringToUTF8Array,
 	UTF8ArrayToString
