@@ -1,17 +1,15 @@
 
 
 import {	
-	ENVIRONMENT_IS_NODE, 
-	ENVIRONMENT_IS_WEB, 
-	ENVIRONMENT_IS_WORKER, 
 	ERRNO_CODES,
 	PAGE_SIZE
 } from './constants.js';
 
+import mod 		 from './module.js';
 import utils 	 from './utils.js';
 import memory  from './memory.js';
-import mod 		 from './module.js';
 import runtime from './runtime.js';
+import '@ungap/global-this'; /* globalThis */
 
 
 const ENV 					 = {};
@@ -73,15 +71,24 @@ function ___buildEnvironment(environ) {
 	memory.exposed.HEAP32[envPtr + lines.length * ptrSize >> 2] = 0;
 }
 
-const _emscripten_get_now = () => {
-	utils.abort();
-};
+
+let _emscripten_get_now;
+
+if (
+	typeof globalThis === 'object' && 
+	globalThis.performance && 
+	typeof globalThis.performance.now === 'function'
+) {
+	_emscripten_get_now = () => globalThis.performance.now();
+}
+else {
+	_emscripten_get_now = Date.now;
+}
+
 
 const _emscripten_get_now_is_monotonic = () => (
-	ENVIRONMENT_IS_NODE || 
-	(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && 
-	self['performance'] && 
-	self['performance']['now']
+	globalThis.performance && 
+	globalThis.performance.now
 );
 
 const ___setErrNo = value => {
@@ -131,7 +138,7 @@ const __exit = status => {
 };
 
 const _abort = () => {
-	mod.Module['abort']();
+	utils.abort();
 };
 
 // NOT an arrow function since it's being used as 
@@ -197,19 +204,15 @@ const _getpwnam = () => {
 const _usleep = useconds => {
 	const msec = useconds / 1e3;
 
-	if (
-		(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && 
-		self['performance'] && 
-		self['performance']['now']
-	) {
-		const start = self['performance']['now']();
+	if (globalThis.performance && globalThis.performance.now) {
+		const start = globalThis.performance.now();
 
-		while (self['performance']['now']() - start < msec) {}
+		while (globalThis.performance.now() - start < msec) {/* noop */}
 	}
 	else {
 		const start = Date.now();
 
-		while(Date.now() - start < msec) {}
+		while (Date.now() - start < msec) {}
 	}
 
 	return 0;
@@ -389,7 +392,7 @@ const _sysconf = name => {
 			return 4;
 		case 84: {
 			if (typeof navigator === 'object') {
-				return navigator['hardwareConcurrency'] || 1;
+				return navigator.hardwareConcurrency || 1;
 			}
 
 			return 1;

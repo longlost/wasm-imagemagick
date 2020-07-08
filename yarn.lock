@@ -2,6 +2,11 @@
 # yarn lockfile v1
 
 
+"@ungap/global-this@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@ungap/global-this/-/global-this-0.4.0.tgz#a358647ec368aae9f6e80ea4420defb1ae78d7fe"
+  integrity sha512-2Ita9Z8L+GZKN/HhECVTDS/uXhjeSXZtAvPo4u/vVRMK1l/lDi/x72ARMvVrBnr8dq1UrFtPnmOapX/7ORX0aQ==
+
 error-stack-parser@^2.0.6:
   version "2.0.6"
   resolved "https://registry.yarnpkg.com/error-stack-parser/-/error-stack-parser-2.0.6.tgz#5a99a707bd7a4c58a797902d48d82803ede6aad8"

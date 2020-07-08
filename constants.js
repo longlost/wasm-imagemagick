@@ -1,25 +1,10 @@
 
 
-const ENVIRONMENT_IS_WEB 		= typeof window === 'object';
-const ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
-
-const ENVIRONMENT_IS_NODE = 
-	typeof process === 'object' && 
-	typeof require === 'function' && 
-	!ENVIRONMENT_IS_WEB && 
-	!ENVIRONMENT_IS_WORKER;
-
-const ENVIRONMENT_IS_SHELL = 
-	!ENVIRONMENT_IS_WEB && 
-	!ENVIRONMENT_IS_NODE && 
-	!ENVIRONMENT_IS_WORKER;
-
-
-const PAGE_SIZE 			= 16384;
-const ASMJS_PAGE_SIZE = 16777216;
-const WASM_PAGE_SIZE 	= 65536;
+const PAGE_SIZE 		 = 16384;
+const WASM_PAGE_SIZE = 65536;
 
 const ALLOC_STATIC = 2;
+const STATIC_BASE  = 1024;
 
 
 const ERRNO_CODES = {
@@ -271,13 +256,9 @@ const ERRNO_MESSAGES = {
 
 export {
 	ALLOC_STATIC,
-	ASMJS_PAGE_SIZE,
-	ENVIRONMENT_IS_WEB,
-	ENVIRONMENT_IS_WORKER,
-	ENVIRONMENT_IS_NODE,
-	ENVIRONMENT_IS_SHELL,
 	ERRNO_CODES,
 	ERRNO_MESSAGES,
 	PAGE_SIZE,
+	STATIC_BASE,
 	WASM_PAGE_SIZE
 };

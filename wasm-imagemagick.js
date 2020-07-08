@@ -1,35 +1,7 @@
 
 // Use this module for applications in the browser.
 
-import {FS, callMain, mod} from './wasm-interface.js';
-
-const directory = '/pictures';
-
-mod.Module.onRuntimeInitialized = () => {
-  FS.mkdir(directory);
-  FS.chdir(directory);
-};
-
-
-
-
-
-
-// // TESTING ONLY!!!
-// // Can get it to run but the .wasm file cannot resole the FS paths correctly,
-// // so the c code never finds the image files to process.
-
-
-// import {FS, Module} from './original-code-formatted.js';
-// const callMain = Module['callMain'];
-
-// const directory = '/pictures';
-// Module.onRuntimeInitialized = () => {
-//   FS.mkdir(directory);
-//   FS.currentPath = directory;
-// };
-
-
+import {FS, callMain} from './wasm-interface.js';
 
 
 const readAsArrayBuffer = file => {
@@ -46,84 +18,79 @@ const readAsArrayBuffer = file => {
     reader.onerror = reject;
   });
 };
+   
+// Add files to the mock File System so the 
+// ImageMagick C code can access them.
+const writeFiles = (collection, buffers) => { 
+  collection.forEach((obj, index) => {
+    const buffer = buffers[index];
+    const data   = new Uint8Array(buffer);
 
+    FS.writeFile(obj.inputName, data);
+  });
+};
 
-const getProcessedFiles = refs => {
-  // const dir        = FS.open(directory);  
-  // const {contents} = dir.node;
+// Pull processed file data from File System.
+const getProcessedFiles = collection => {
 
+  const files = collection.map(obj => {
 
-
-  // TODO:
-  //
-  //      Align type with content key since Object.keys is not ordered
-  //      the same as incoming files or types.
-
-
-
-  // const files = Object.keys(contents).map((key, index) => {
-  //   const read = FS.readFile(key);
-
-  //   // Cleanup read file.
-  //   FS.unlink(key);
-
-  //   return new File([read], key, {type: types[index]});
-  // });
-
-  const files = refs.map(ref => {
-
-    const {name, type} = ref;
-
-    const read = FS.readFile(name);
+    const {inputName, outputName, file} = obj;
+    const read = FS.readFile(outputName);
 
     // Cleanup read file.
-    FS.unlink(name);
+    FS.unlink(inputName);
+    FS.unlink(outputName);
 
-    return new File([read], name, {type});
+    return new File([read], outputName, {type: file.type});
   });
     
   return files;
 };
 
 
-const magick = async (files, commands) => {
+// Array, Array --> Promise --> Array
+//
+// ImageMagick can work with more than one image at a time.
+//
+// 'fileCollection' is an array of objects that each contain
+// a File object, along with an inputName and outputName.
+// (ie. [{inputName, file, outputName}])
+//
+// 'commands' is an array of strings that follow the ImageMagick api.
+//
+// Returns a Promise that resolves to an array of File objects.
 
-  const bufferPromises = files.map(file => readAsArrayBuffer(file));
-  const buffers        = await Promise.all(bufferPromises);  
+// TODO:
+//
+//      Integrate 'identify' and 'mogrify' ImageMagick commands.
 
+const magick = async (fileCollection, commands) => {
   try {
 
-    // ImageMagick can work with more than one image at a time.
-    files.forEach((file, index) => {
-      const buffer = buffers[index];
-      const data   = new Uint8Array(buffer);
+    const bufferPromises = fileCollection.map(obj => readAsArrayBuffer(obj.file));
+    const buffers        = await Promise.all(bufferPromises);
 
-      FS.writeFile(`input_${file.name}`, data);
-    });
-
+    writeFiles(fileCollection, buffers);
 
     callMain(commands);
 
-
-    const processedRefs = files.map(file => ({name: file.name, type: file.type}));    
-    const processed = getProcessedFiles(processedRefs);
-
-    return processed;
-
-    // return;
+    return getProcessedFiles(fileCollection);
   }
   catch (error) {
     console.error(error);
+    
+    fileCollection.forEach(obj => {
+      FS.unlink(obj.inputName);
 
-    // Cleanup source files.
-    // 'mogrify' then output files have same name, so skip.
-    if (commands[0] !== 'mogrify') {
-      files.forEach(file => {
-        FS.unlink(file.name);
-      });
-    }
+      // Cleanup source files.
+      // 'mogrify' then output files have same name, so skip.
+      if (commands[0] !== 'mogrify') {
+        FS.unlink(obj.outputName);
+      }
+    });
   }
-
 };
+
 
 export default magick;

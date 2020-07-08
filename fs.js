@@ -1,16 +1,12 @@
 
 import {ERRNO_CODES} from './constants.js';
-import utils 			 	 from './utils.js';
 import mod 	 	 			 from './module.js';
+import utils 			 	 from './utils.js';
 import runtime 		 	 from './runtime.js';
 import environment 	 from './environment.js';
 import fsShared 	 	 from './fs-shared.js';
 import PATH  			 	 from './path.js';
-import TTY 	 			 	 from './tty.js';
 import MEMFS 			 	 from './memfs.js';
-import IDBFS 			 	 from './idbfs.js';
-import NODEFS 		 	 from './nodefs.js';
-import WORKERFS 	 	 from './workerfs.js';
 import '@ungap/global-this';
 
 
@@ -59,13 +55,11 @@ const FS = {
 	nextInode: 							 fsShared.exposed.nextInode,
 	nameTable: 							 fsShared.exposed.nameTable,
 	currentPath: 						 fsShared.exposed.currentPath,
-	initialized: 						 false,
 	ignorePermissions: 			 fsShared.exposed.ignorePermissions,
 	trackingDelegate: 			 fsShared.trackingDelegate,
 	tracking: 							 fsShared.tracking,
 	ErrnoError: 						 utils.ErrnoError,
 	genericErrors: 					 fsShared.genericErrors,
-	filesystems: 						 null,
 	syncFSRequests: 				 0,
 	lookupPath: 						 fsShared.lookupPath,
 	getPath: 								 fsShared.getPath,
@@ -662,42 +656,6 @@ const FS = {
 		FS.mkdir('/home/web_user');
 	},
 
-	createDefaultDevices() {
-		FS.mkdir('/dev');
-		FS.registerDevice(FS.makedev(1, 3), {
-			read:  () => 0,
-			write: (stream, buffer, offset, length, pos) => length
-		});
-		FS.mkdev('/dev/null', FS.makedev(1, 3));
-		TTY.register(FS.makedev(5, 0), TTY.default_tty_ops);
-		TTY.register(FS.makedev(6, 0), TTY.default_tty1_ops);
-		FS.mkdev('/dev/tty',  FS.makedev(5, 0));
-		FS.mkdev('/dev/tty1', FS.makedev(6, 0));
-
-		let random_device;
-
-		if (typeof crypto !== 'undefined') {
-			const randomBuffer = new Uint8Array(1);
-
-			random_device = () => {
-				crypto.getRandomValues(randomBuffer);
-
-				return randomBuffer[0];
-			};
-		}
-		else if (ENVIRONMENT_IS_NODE) {
-			random_device = () => require('crypto')['randomBytes'](1)[0];
-		}
-		else {
-			random_device = () => Math.random() * 256 | 0;
-		}
-
-		FS.createDevice('/dev', 'random',  random_device);
-		FS.createDevice('/dev', 'urandom', random_device);
-		FS.mkdir('/dev/shm');
-		FS.mkdir('/dev/shm/tmp');
-	},
-
 	createSpecialDirectories() {
 		FS.mkdir('/proc');
 		FS.mkdir('/proc/self');
@@ -740,67 +698,13 @@ const FS = {
 		);
 	},
 
-	createStandardStreams() {
-		if (mod.Module['stdin']) {
-			FS.createDevice('/dev', 'stdin', mod.Module['stdin']);
-		}
-		else {
-			FS.symlink('/dev/tty', '/dev/stdin');
-		}
-
-		if (mod.Module['stdout']) {
-			FS.createDevice('/dev', 'stdout', null, mod.Module['stdout']);
-		}
-		else {
-			FS.symlink('/dev/tty', '/dev/stdout');
-		}
-
-		if (mod.Module['stderr']) {
-			FS.createDevice('/dev', 'stderr', null, mod.Module['stderr']);
-		}
-		else {
-			FS.symlink('/dev/tty1', '/dev/stderr');
-		}
-
-		const stdin = FS.open('/dev/stdin', 'r');
-
-		utils.assert(stdin.fd === 0, `invalid handle for stdin ('${stdin.fd}')`);
-
-		const stdout = FS.open('/dev/stdout', 'w');
-
-		utils.assert(stdout.fd === 1, `invalid handle for stdout ('${stdout.fd}')`);
-
-		const stderr = FS.open('/dev/stderr', 'w');
-
-		utils.assert(stderr.fd === 2, `invalid handle for stderr ('${stderr.fd}')`);
-	},
-
 	staticInit() {
 		FS.mount(MEMFS, {}, '/');
 		FS.createDefaultDirectories();
-		FS.createDefaultDevices();
 		FS.createSpecialDirectories();
-		FS.filesystems = {
-			'MEMFS': 		MEMFS,
-			'IDBFS': 		IDBFS,
-			'NODEFS': 	NODEFS,
-			'WORKERFS': WORKERFS
-		};
-	},
-
-	init(input, output, error) {
-		utils.assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
-
-		FS.init.initialized = true;
-		mod.Module['stdin']  = input  || mod.Module['stdin'];
-		mod.Module['stdout'] = output || mod.Module['stdout'];
-		mod.Module['stderr'] = error  || mod.Module['stderr'];
-		FS.createStandardStreams();
 	},
 
 	quit() {
-		FS.init.initialized = false;
-
 		FS.streams.forEach(stream => {
 			if (stream) {
 				FS.close(stream);
@@ -1492,6 +1396,9 @@ const FS = {
 		openRequest.onerror = onerror;
 	}
 };
+
+
+FS.staticInit();
 
 
 export default FS;
