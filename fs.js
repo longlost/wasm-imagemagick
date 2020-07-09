@@ -1,13 +1,11 @@
 
 import {ERRNO_CODES} from './constants.js';
-import mod 	 	 			 from './module.js';
 import utils 			 	 from './utils.js';
-import runtime 		 	 from './runtime.js';
 import environment 	 from './environment.js';
 import fsShared 	 	 from './fs-shared.js';
 import PATH  			 	 from './path.js';
 import MEMFS 			 	 from './memfs.js';
-import '@ungap/global-this';
+import '@ungap/global-this'; /* globalThis */
 
 
 const demangle = func => func;
@@ -918,7 +916,7 @@ const FS = {
 			},
 
 			write(stream, buffer, offset, length, pos) {
-				for (var i = 0; i < length; i++) {
+				for (let i = 0; i < length; i++) {
 					try {
 						output(buffer[offset + i]);
 					}
@@ -931,7 +929,7 @@ const FS = {
 					stream.node.timestamp = Date.now();
 				}
 
-				return i;
+				return length;
 			}
 		});
 
@@ -953,15 +951,6 @@ const FS = {
 
 		if (typeof XMLHttpRequest !== 'undefined') {
 			throw new Error('Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.');
-		}
-		else if (mod.Module['read']) {
-			try {
-				obj.contents  = utils.intArrayFromString(mod.Module['read'](obj.url), true);
-				obj.usedBytes = obj.contents.length;
-			}
-			catch (_) {
-				success = false;
-			}
 		}
 		else {
 			throw new Error('Cannot load without read() or XMLHttpRequest.');
@@ -1018,11 +1007,11 @@ const FS = {
 
 			const doXHR = (from, to) => {
 				if (from > to) {
-					throw new Error(`invalid range ('${from}', '${to}') or no bytes requested!`);
+					throw new Error(`Invalid range ('${from}', '${to}') or no bytes requested!`);
 				}
 
 				if (to > datalength - 1) {
-					throw new Error(`only ${datalength}' bytes available! programmer error!`);
+					throw new Error(`Only ${datalength}' bytes available! programmer error!`);
 				}
 
 				const xhr = new XMLHttpRequest;
@@ -1212,34 +1201,10 @@ const FS = {
 				if (onload) {
 					onload();
 				}
+			};			
 
-				runtime.removeRunDependency(dep);
-			};
-
-			let handled = false;
-
-			mod.Module['preloadPlugins'].forEach(plugin => {
-				if (handled) { return; }
-
-				if (plugin['canHandle'](fullname)) {
-					plugin['handle'](byteArray, fullname, finish, () => {
-						if (onerror) {
-							onerror();
-						}
-
-						runtime.removeRunDependency(dep);
-					});
-
-					handled = true;
-				}
-			});
-
-			if (!handled) {
-				finish(byteArray);
-			}
+			finish(byteArray);
 		};
-
-		runtime.addRunDependency(dep);
 
 		if (typeof url === 'string') {
 			Browser.asyncLoad(

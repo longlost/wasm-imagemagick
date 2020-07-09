@@ -2,13 +2,12 @@
 
 import {	
 	ERRNO_CODES,
-	PAGE_SIZE
+	PAGE_SIZE,
+	PROGRAM_STRING
 } from './constants.js';
 
-import mod 		 from './module.js';
 import utils 	 from './utils.js';
 import memory  from './memory.js';
-import runtime from './runtime.js';
 import '@ungap/global-this'; /* globalThis */
 
 
@@ -30,7 +29,7 @@ function ___buildEnvironment(environ) {
 		ENV['PWD'] 	= '/';
 		ENV['HOME'] = '/home/web_user';
 		ENV['LANG'] = 'C.UTF-8';
-		ENV['_'] 		= mod.Module['thisProgram'];
+		ENV['_'] 		= PROGRAM_STRING;
 
 		poolPtr = memory.getMemory(TOTAL_ENV_SIZE);
 		envPtr 	= memory.getMemory(MAX_ENV_VALUES * 4);
@@ -93,8 +92,8 @@ const _emscripten_get_now_is_monotonic = () => (
 
 const ___setErrNo = value => {
 
-	if (mod.Module['___errno_location']) {
-		memory.exposed.HEAP32[mod.Module['___errno_location']() >> 2] = value;
+	if (utils.Module['___errno_location']) {
+		memory.exposed.HEAP32[utils.Module['___errno_location']() >> 2] = value;
 	}
 
 	return value;
@@ -134,7 +133,7 @@ const ___map_file = (pathname, size) => {
 const ___unlock = () => {};
 
 const __exit = status => {
-	runtime.exit(status);
+	utils.exit(status);
 };
 
 const _abort = () => {
@@ -152,7 +151,7 @@ function _clock() {
 }
 
 const _longjmp = (env, value) => {
-	mod.Module['setThrew'](env, value || 1);
+	utils.Module['setThrew'](env, value || 1);
 
 	throw 'longjmp';
 };

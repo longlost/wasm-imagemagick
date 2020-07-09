@@ -5,7 +5,6 @@ import {
 	WASM_PAGE_SIZE
 } from './constants.js';
 
-import mod 	 from './module.js';
 import utils from './utils.js';
 
 
@@ -28,8 +27,8 @@ const exposed = {
 };
 
 
-const TOTAL_STACK  = mod.Module['TOTAL_STACK']  || 5242880;
-let 	TOTAL_MEMORY = mod.Module['TOTAL_MEMORY'] || 16777216;
+const TOTAL_STACK  = 5242880;
+let 	TOTAL_MEMORY = 16777216;
 
 
 exposed.STATICTOP = STATIC_BASE + 1212304;
@@ -57,7 +56,6 @@ else {
 
 
 const staticAlloc = size => {
-
 	const ret = exposed.STATICTOP;
 
 	exposed.STATICTOP = exposed.STATICTOP + size + 15 & -16;
@@ -74,18 +72,18 @@ const _emscripten_memcpy_big = (dest, src, num) => {
 };
 
 const updateGlobalBuffer = buf => {
-	mod.Module['buffer'] = exposed.buffer = buf;
+	exposed.buffer = buf;
 };
 
 const updateGlobalBufferViews = () => {
-	mod.Module['HEAP8'] 	= exposed.HEAP8  = new Int8Array(exposed.buffer);
-	mod.Module['HEAP16'] 	= exposed.HEAP16 = new Int16Array(exposed.buffer);
-	mod.Module['HEAP32'] 	= exposed.HEAP32 = new Int32Array(exposed.buffer);
-	mod.Module['HEAPU8'] 	= exposed.HEAPU8 = new Uint8Array(exposed.buffer);
-	mod.Module['HEAPU16'] = HEAPU16 			 = new Uint16Array(exposed.buffer);
-	mod.Module['HEAPU32'] = HEAPU32 			 = new Uint32Array(exposed.buffer);
-	mod.Module['HEAPF32'] = HEAPF32 			 = new Float32Array(exposed.buffer);
-	mod.Module['HEAPF64'] = HEAPF64 			 = new Float64Array(exposed.buffer);
+	exposed.HEAP8  = new Int8Array(exposed.buffer);
+	exposed.HEAP16 = new Int16Array(exposed.buffer);
+	exposed.HEAP32 = new Int32Array(exposed.buffer);
+	exposed.HEAPU8 = new Uint8Array(exposed.buffer);
+	HEAPU16 			 = new Uint16Array(exposed.buffer);
+	HEAPU32 			 = new Uint32Array(exposed.buffer);
+	HEAPF32 			 = new Float32Array(exposed.buffer);
+	HEAPF64 			 = new Float64Array(exposed.buffer);
 };
 
 const wasmReallocBuffer = size => {

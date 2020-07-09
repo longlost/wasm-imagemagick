@@ -1,6 +1,5 @@
 
 
-import mod 	 	 		 	 from './module.js';
 import utils 	 		 	 from './utils.js';
 import memory  		 	 from './memory.js';
 import environment 	 from './environment.js';
@@ -13,7 +12,7 @@ import invoke 		 	 from './invoke.js';
 import integrateWasm from './integrate.js';
 
 
-const setAsm = async () => {
+const init = async () => {
 
 	const asmLibrary = {
 		'abort': 									 utils.abort,
@@ -126,52 +125,38 @@ const setAsm = async () => {
 	);
 
 
-	utils.exposed._free 														= asm._free;
-	utils.exposed._memset 													= asm._memset;
-	utils.exposed.___emscripten_environ_constructor = asm.___emscripten_environ_constructor;
-	memory.exposed._emscripten_replace_memory 			= asm._emscripten_replace_memory;
-	memory.exposed._malloc 													= asm._malloc;
-	memory.exposed.stackAlloc 											= asm.stackAlloc;
-	time.exposed.__get_daylight 										= asm.__get_daylight;
-	time.exposed.__get_timezone 										= asm.__get_timezone;
-	time.exposed.__get_tzname 											= asm.__get_tzname;
-	syscalls.exposed._memalign 											= asm._memalign;
-	invoke.exposed.stackRestore 										= asm.stackRestore;
-	invoke.exposed.stackSave 												= asm.stackSave;
+	const {
+		__get_daylight,
+		__get_timezone,
+		__get_tzname,
+		_emscripten_replace_memory,
+		_free,
+		_main,
+		_malloc,
+		_memalign,
+		_memset,
+		stackAlloc,
+		...rest
+	} = asm;
 
-	mod.Module['___errno_location'] 	= asm.___errno_location;
-	mod.Module['_main'] 							= asm._main;
-	mod.Module['setThrew'] 						= asm.setThrew;
-	mod.Module['dynCall_dii'] 				= asm.dynCall_dii;
-	mod.Module['dynCall_i'] 					= asm.dynCall_i;
-	mod.Module['dynCall_ii'] 					= asm.dynCall_ii;
-	mod.Module['dynCall_iifi'] 				= asm.dynCall_iifi;
-	mod.Module['dynCall_iii'] 				= asm.dynCall_iii;
-	mod.Module['dynCall_iiii'] 				= asm.dynCall_iiii;
-	mod.Module['dynCall_iiiii'] 			= asm.dynCall_iiiii;
-	mod.Module['dynCall_iiiiii'] 			= asm.dynCall_iiiiii;
-	mod.Module['dynCall_iiiiiii'] 		= asm.dynCall_iiiiiii;
-	mod.Module['dynCall_iiiiiiii'] 		= asm.dynCall_iiiiiiii;
-	mod.Module['dynCall_iiiiiiiii'] 	= asm.dynCall_iiiiiiiii;
-	mod.Module['dynCall_iiiiiiiiii'] 	= asm.dynCall_iiiiiiiiii;
-	mod.Module['dynCall_iiiiiiiiiii'] = asm.dynCall_iiiiiiiiiii;
-	mod.Module['dynCall_iiijj'] 			= asm.dynCall_iiijj;
-	mod.Module['dynCall_iij'] 				= asm.dynCall_iij;
-	mod.Module['dynCall_ji'] 					= asm.dynCall_ji;
-	mod.Module['dynCall_v'] 					= asm.dynCall_v;
-	mod.Module['dynCall_vi'] 					= asm.dynCall_vi;
-	mod.Module['dynCall_vii'] 				= asm.dynCall_vii;
-	mod.Module['dynCall_viid'] 				= asm.dynCall_viid;
-	mod.Module['dynCall_viidddddddd'] = asm.dynCall_viidddddddd;
-	mod.Module['dynCall_viii'] 				= asm.dynCall_viii;
-	mod.Module['dynCall_viiii'] 			= asm.dynCall_viiii;
-	mod.Module['dynCall_viiiii'] 			= asm.dynCall_viiiii;
-	mod.Module['dynCall_viiiiii'] 		= asm.dynCall_viiiiii;
-	mod.Module['dynCall_viiiiiiiii'] 	= asm.dynCall_viiiiiiiii;
-	mod.Module['dynCall_vij'] 				= asm.dynCall_vij;
+	memory.exposed._emscripten_replace_memory = _emscripten_replace_memory;
+	memory.exposed._malloc 										= _malloc;
+	memory.exposed.stackAlloc 								= stackAlloc;
+	syscalls.exposed._memalign 								= _memalign;
+	time.exposed.__get_daylight 							= __get_daylight;
+	time.exposed.__get_timezone 							= __get_timezone;
+	time.exposed.__get_tzname 								= __get_tzname;
+	utils.exposed._free 											= _free;
+	utils.exposed._memset 										= _memset;
+
+	utils.Module = rest;	
+
+	asm.___emscripten_environ_constructor();
+
+	return _main;
 };
 
 
 export default {
-	setAsm
+	init
 };

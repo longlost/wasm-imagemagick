@@ -73,9 +73,12 @@ const magick = async (fileCollection, commands) => {
 
     writeFiles(fileCollection, buffers);
 
-    callMain(commands);
+    await callMain(commands);
 
-    return getProcessedFiles(fileCollection);
+    // 'await' here in order to catch and handle errors.
+    const files = await getProcessedFiles(fileCollection);
+
+    return files;
   }
   catch (error) {
     console.error(error);

@@ -7,7 +7,6 @@ import {
 
 import utils 	 from './utils.js';
 import memory  from './memory.js';
-import runtime from './runtime.js';
 
 
 const mergeMemory = newBuffer => {
@@ -31,8 +30,6 @@ const receiveInstantiatedSource = output => {
 	if (instanceMemory) {
 		mergeMemory(instanceMemory);
 	}
-
-	runtime.removeRunDependency('wasm-instantiate');
 
 	return exported;
 };
@@ -65,10 +62,7 @@ const doNativeWasm = async (env, providedBuffer) => {
 	}
 
 	env.memory = memory.exposed.wasmMemory;
-	info.env 	 = env;		
-
-	runtime.addRunDependency('wasm-instantiate');
-	runtime.addRunDependency('wasm-instantiate');
+	info.env 	 = env;	
 
 	const instantiateArrayBuffer = async receiver => {
 		try {
