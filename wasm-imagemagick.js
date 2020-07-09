@@ -31,21 +31,19 @@ const writeFiles = (collection, buffers) => {
 };
 
 // Pull processed file data from File System.
-const getProcessedFiles = collection => {
+const getProcessedFile = (collection, outputName) => {
 
-  const files = collection.map(obj => {
-
-    const {inputName, outputName, file} = obj;
-    const read = FS.readFile(outputName);
+  collection.forEach(obj => {
 
     // Cleanup read file.
-    FS.unlink(inputName);
-    FS.unlink(outputName);
-
-    return new File([read], outputName, {type: file.type});
+    FS.unlink(obj.inputName);    
   });
-    
-  return files;
+
+  const read = FS.readFile(outputName);
+
+  FS.unlink(outputName);
+
+  return new File([read], outputName);
 };
 
 
@@ -65,7 +63,7 @@ const getProcessedFiles = collection => {
 //
 //      Integrate 'identify' and 'mogrify' ImageMagick commands.
 
-const magick = async (fileCollection, commands) => {
+const magick = async (fileCollection, outputName, commands) => {
   try {
 
     const bufferPromises = fileCollection.map(obj => readAsArrayBuffer(obj.file));
@@ -76,22 +74,23 @@ const magick = async (fileCollection, commands) => {
     await callMain(commands);
 
     // 'await' here in order to catch and handle errors.
-    const files = await getProcessedFiles(fileCollection);
+    const file = await getProcessedFile(fileCollection, outputName);
 
-    return files;
+    return file;
   }
   catch (error) {
-    console.error(error);
     
     fileCollection.forEach(obj => {
-      FS.unlink(obj.inputName);
-
-      // Cleanup source files.
-      // 'mogrify' then output files have same name, so skip.
-      if (commands[0] !== 'mogrify') {
-        FS.unlink(obj.outputName);
-      }
+      FS.unlink(obj.inputName);      
     });
+
+    // Cleanup source files.
+    // 'mogrify' then output files have same name, so skip.
+    if (commands[0] !== 'mogrify') {
+      FS.unlink(outputName);
+    }
+
+    throw error;
   }
 };
 
