@@ -7,7 +7,7 @@ Support for node and shell environments has been dropped in order to reduce the 
 
 Also this utility does not have a built in web worker abstraction, allowing the developer to control concurrence and worker termination, since battery life is a concern with mobile development.
 
-It is HIGHLY recommended to run this code in a web worker thread.
+It is HIGHLY recommended to run this code in a Web Worker thread.
 
 
 ### Api
