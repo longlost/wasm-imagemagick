@@ -14,6 +14,10 @@ const exposed = {
 
 };
 
+// Set in 'asm.init'.
+// Contains exported functions from wasm C code.
+const Module = {};
+
 
 const ErrnoError = function(errno, node) {
 	this.node = node;
@@ -46,6 +50,16 @@ ErrnoError.prototype = new Error;
 ErrnoError.prototype.constructor = ErrnoError;
 
 
+const ExitStatus = function(status) {
+	this.name 	 = 'ExitStatus';
+	this.message = `Program terminated with exit(${status})`;
+	this.status  = status;
+};
+
+ExitStatus.prototype = new Error;
+ExitStatus.prototype.constructor = ExitStatus;
+
+
 const out = console.log.bind(console);
 const err = console.warn.bind(console);
 
@@ -76,6 +90,12 @@ const assert = (condition, text) => {
 
 const quit = (status, toThrow) => {
 	throw toThrow;
+};
+
+const exit = (status, implicit) => {
+	if (implicit && status === 0) { return; }
+
+	quit(status, new ExitStatus(status));
 };
 
 
@@ -296,10 +316,13 @@ const UTF8ArrayToString = (u8Array, idx) => {
 
 export default {	
 	ErrnoError,
+	ExitStatus,
+	Module,
 	abort,
 	alignUp,
 	assert,
 	err,
+	exit,
 	exposed,
 	getDevice,
 	intArrayFromString,

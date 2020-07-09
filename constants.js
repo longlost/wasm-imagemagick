@@ -6,6 +6,7 @@ const WASM_PAGE_SIZE = 65536;
 const ALLOC_STATIC = 2;
 const STATIC_BASE  = 1024;
 
+const PROGRAM_STRING = './this.program';
 
 const ERRNO_CODES = {
 	EPERM: 1,
@@ -259,6 +260,7 @@ export {
 	ERRNO_CODES,
 	ERRNO_MESSAGES,
 	PAGE_SIZE,
+	PROGRAM_STRING,
 	STATIC_BASE,
 	WASM_PAGE_SIZE
 };
