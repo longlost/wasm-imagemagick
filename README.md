@@ -29,25 +29,30 @@ ImageMagic deals with image files in an OS environment.
 import magick from '@longlost/wasm-imagemagick/wasm-imagemagick.js';
 
 const processor = async file => {
-  const inputName  = `input_${file.name}`;  
-  const outputName = file.name;  
-  const fileItem   = {file, inputName};
+  try {
+    const inputName  = `input_${file.name}`;  
+    const outputName = file.name;  
+    const fileItem   = {file, inputName};
 
-  const commands  = [
-    'convert', inputName,
-    '-auto-orient',
-    '-sampling-factor', '4:2:0',
-    '-strip', 
-    '-auto-gamma', 
-    '-adaptive-resize', '60%', 
-    '-quality', '82', 
-    '-unsharp', '0x0.75+0.75+0.008', 
-    outputName
-  ];
+    const commands  = [
+      'convert', inputName,
+      '-auto-orient',
+      '-sampling-factor', '4:2:0',
+      '-strip', 
+      '-auto-gamma', 
+      '-adaptive-resize', '60%', 
+      '-quality', '82', 
+      '-unsharp', '0x0.75+0.75+0.008', 
+      outputName
+    ];
 
-  const processedFile = await magick([fileItem], outputName, commands);
-  
-  return processedFile;
+    const processedFile = await magick([fileItem], outputName, commands);
+
+    return processedFile;
+  } 
+  catch (error) {
+    // Do something clever with the error...
+  }
 };
 
 export processor;
