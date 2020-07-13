@@ -1,4 +1,5 @@
 # wasm-imagemagick
+
 This utility is based off the library at https://github.com/KnicKnic/WASM-ImageMagick.  
 
 Inspiration for creating this tool came from the need to support mobile devices.
@@ -7,7 +8,7 @@ Support for node and shell environments has been dropped in order to reduce the 
 
 Also this utility does not have a built in web worker abstraction, allowing the developer to control concurrence and worker termination, since battery life is a concern with mobile development.
 
-It is HIGHLY recommended to run this code in a Web Worker thread.
+It is HIGHLY recommended to run this code in a WebWorker thread! I suggest using the wonderful Comlink library, https://github.com/GoogleChromeLabs/comlink, to make working with WebWorkers a breeze.
 
 
 ### Api
@@ -55,12 +56,12 @@ const processor = async file => {
   }
 };
 
-export processor;
+export default processor;
 
 
 // app.js
 
-import * as processor from './processor.js';
+import processor from './processor.js';
 
 (async function() {
 
