@@ -1,6 +1,6 @@
 # wasm-imagemagick
 
-This utility is based off the library at https://github.com/KnicKnic/WASM-ImageMagick.  
+This utility is based off the [WASM-ImageMagick](https://github.com/KnicKnic/WASM-ImageMagick) library.  
 
 Inspiration for creating this tool came from the need to support mobile devices.
 
@@ -8,21 +8,27 @@ Support for node and shell environments has been dropped in order to reduce the 
 
 Also this utility does not have a built in web worker abstraction, allowing the developer to control concurrence and worker termination, since battery life is a concern with mobile development.
 
-It is HIGHLY recommended to run this code in a WebWorker thread! I suggest using the wonderful Comlink library, https://github.com/GoogleChromeLabs/comlink, to make working with WebWorkers a breeze.
+It is HIGHLY recommended to run this code in a Web Worker thread! I suggest using the wonderful [Comlink](https://github.com/GoogleChromeLabs/comlink) library, to make working with Web Workers a breeze.
 
 
 ### Api
 
 Since ImageMagick can work with multiple input image files, `magick` accepts an array of file items.
-This must coinside with the number of input files in the `commands` array.
+This must coincide with the number of input files in the `commands` array.
 
-`inputName` and `outputName` tell `magick` where to read/write to the virtual File System stub provided by emscripten, since this is how
-ImageMagic deals with image files in an OS environment.
+`inputName` and `outputName` tell `magick` where to read/write to the virtual File System stub provided by emscripten, since this is how ImageMagic deals with image files in an OS environment.
 
 `commands` are identical to the standard ImageMagic commands api.
 
 
 ### Example usage.
+
+npm install --save comlink @longlost/wasm-imagemagick
+
+or
+
+yarn add comlink @longlost/wasm-imagemagick
+
 
 ```
 // processor.js
@@ -31,8 +37,10 @@ import magick from '@longlost/wasm-imagemagick/wasm-imagemagick.js';
 
 const processor = async file => {
   try {
+
+    // This example creates an output file with the same name as the input file.
     const inputName  = `input_${file.name}`;  
-    const outputName = file.name;  
+    const outputName = file.name;
     const fileItem   = {file, inputName};
 
     const commands  = [
@@ -47,7 +55,12 @@ const processor = async file => {
       outputName
     ];
 
-    const processedFile = await magick([fileItem], outputName, commands);
+    const processedFile = await magick({
+      commands,
+      fileCollection: [fileItem], 
+      outputName,
+      outputType: file.type
+    });
 
     return processedFile;
   } 
