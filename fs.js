@@ -1,10 +1,12 @@
 
+
 import {ERRNO_CODES} from './constants.js';
 import utils 			 	 from './utils.js';
 import environment 	 from './environment.js';
 import fsShared 	 	 from './fs-shared.js';
 import PATH  			 	 from './path.js';
 import MEMFS 			 	 from './memfs.js';
+import TTY 					 from './tty.js';
 import '@ungap/global-this'; /* globalThis */
 
 
@@ -696,10 +698,50 @@ const FS = {
 		);
 	},
 
+	createDefaultDevices() {
+		FS.mkdir('/dev');
+		FS.registerDevice(FS.makedev(1, 3), {
+			read() { return 0; },
+			write(stream, buffer, offset, length, pos) { return length; }
+		});
+		FS.mkdev('/dev/null', FS.makedev(1, 3));
+		TTY.register(FS.makedev(5, 0), TTY.default_tty_ops);
+		TTY.register(FS.makedev(6, 0), TTY.default_tty1_ops);
+		FS.mkdev('/dev/tty',  FS.makedev(5, 0));
+		FS.mkdev('/dev/tty1', FS.makedev(6, 0));
+
+		const random_device = () => Math.random() * 256 | 0;
+
+		FS.createDevice('/dev', 'random',  random_device);
+		FS.createDevice('/dev', 'urandom', random_device);
+		FS.mkdir('/dev/shm');
+		FS.mkdir('/dev/shm/tmp');
+	},
+
+	createStandardStreams() {		
+		FS.symlink('/dev/tty', '/dev/stdin');
+		FS.symlink('/dev/tty', '/dev/stdout');
+		FS.symlink('/dev/tty1', '/dev/stderr');
+
+		const stdin = FS.open('/dev/stdin', 'r');
+
+		utils.assert(stdin.fd === 0, `invalid handle for stdin (${stdin.fd})`);
+
+		const stdout = FS.open('/dev/stdout', 'w');
+
+		utils.assert(stdout.fd === 1, `invalid handle for stdout (${stdout.fd})`);
+
+		const stderr = FS.open('/dev/stderr', 'w');
+
+		utils.assert(stderr.fd === 2, `invalid handle for stderr (${stderr.fd})`);
+	},
+
 	staticInit() {
 		FS.mount(MEMFS, {}, '/');
 		FS.createDefaultDirectories();
+		FS.createDefaultDevices();
 		FS.createSpecialDirectories();
+		FS.createStandardStreams();
 	},
 
 	quit() {

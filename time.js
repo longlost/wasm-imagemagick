@@ -1,8 +1,7 @@
 
 
-import {ALLOC_STATIC} from './constants.js';
-import utils 					from './utils.js';
-import memory 				from './memory.js';
+import utils 	from './utils.js';
+import memory from './memory.js';
 
 
 // Exposed to be set/updated in other modules.
@@ -13,7 +12,6 @@ const exposed = {
 	__get_tzname: 	null
 };
 
-const tmTimezone = memory.allocate(utils.intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
 
 const _gettimeofday = ptr => {
 	const now = Date.now();
@@ -42,7 +40,7 @@ const _gmtime_r = (time, tmPtr) => {
 	const yday 	= (date.getTime() - start) / (1e3 * 60 * 60 * 24) | 0;
 
 	memory.exposed.HEAP32[tmPtr + 28 >> 2] = yday;
-	memory.exposed.HEAP32[tmPtr + 40 >> 2] = tmTimezone;
+	memory.exposed.HEAP32[tmPtr + 40 >> 2] = memory.tmTimezone;
 
 	return tmPtr;
 };

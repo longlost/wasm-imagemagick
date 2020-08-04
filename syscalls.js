@@ -217,7 +217,7 @@ const get = () => {
 
 const getStr = () => memory.Pointer_stringify(get());
 
-const getStreamFromFD = () => { 
+const getStreamFromFD = () => {
 	const stream = FS.getStream(get());
 
 	if (!stream) {
@@ -527,18 +527,19 @@ const ___syscall197 = (which, vArgs) => {
 };
 
 
-const ___syscall20 = (which, vArgs) => {
-	varargs = vArgs;
+const ___syscall20 = () => 42;
+// const ___syscall20 = (which, vArgs) => {
+// 	varargs = vArgs;
 
-	try {
-		const PROCINFO = {ppid: 1, pid: 42, sid: 42, pgid: 42};
+// 	try {
+// 		const PROCINFO = {ppid: 1, pid: 42, sid: 42, pgid: 42};
 
-		return PROCINFO.pid;
-	}
-	catch (error) {
-		return handleError(error);
-	}
-};
+// 		return PROCINFO.pid;
+// 	}
+// 	catch (error) {
+// 		return handleError(error);
+// 	}
+// };
 
 const ___syscall220 = (which, vArgs) => {
 	varargs = vArgs;

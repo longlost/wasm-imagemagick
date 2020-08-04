@@ -331,7 +331,7 @@ function setValue(ptr, value, type, noSafe) {
 	var tempDouble;
 	type = type || 'i8';
 
-	if (type.charAt(type.length-1) === '*') {
+	if (type.charAt(type.length - 1) === '*') {
 		type = 'i32';
 	}
 
@@ -411,7 +411,7 @@ function allocate(slab, types, allocator, ptr) {
 		assert((ret & 3) == 0);
 		stop = ret +(size & ~3);
 
-		for (; ptr < stop; ptr+=4) {
+		for (; ptr < stop; ptr += 4) {
 			HEAP32[ptr >> 2] = 0;
 		}
 
@@ -4039,6 +4039,10 @@ var FS = {
 		fd_start = fd_start || 0;
 		fd_end 	 = fd_end 	|| FS.MAX_OPEN_FDS;
 
+
+		debugger;
+
+
 		for (var fd = fd_start; fd <= fd_end; fd++) {
 			if (!FS.streams[fd]) {
 				return fd;
@@ -6278,9 +6282,7 @@ var SYSCALLS = {
 	get: (function(varargs) {
 		SYSCALLS.varargs += 4;
 
-		var ret = HEAP32[SYSCALLS.varargs - 4 >> 2];
-
-		return ret;
+		return HEAP32[SYSCALLS.varargs - 4 >> 2];
 	}),
 
 	getStr: (function() {
@@ -6444,8 +6446,7 @@ function ___syscall140(which, varargs) {
 function ___syscall145(which, varargs) {
 	SYSCALLS.varargs = varargs;
 
-
-	// console.log('___syscall145 which: ', which, ' varargs: ', varargs);
+	// console.log('___syscall145 varargs: ', varargs);
 
 
 	try {
@@ -6607,10 +6608,10 @@ function ___syscall191(which, varargs) {
 		var resource = SYSCALLS.get();
 		var rlim 		 = SYSCALLS.get();
 
-		HEAP32[rlim >> 2]      =- 1;
-		HEAP32[rlim + 4 >> 2]  =- 1;
-		HEAP32[rlim + 8 >> 2]  =- 1;
-		HEAP32[rlim + 12 >> 2] =- 1;
+		HEAP32[rlim >> 2]      = -1;
+		HEAP32[rlim + 4 >> 2]  = -1;
+		HEAP32[rlim + 8 >> 2]  = -1;
+		HEAP32[rlim + 12 >> 2] = -1;
 
 		return 0;
 	}
@@ -6964,10 +6965,10 @@ function ___syscall340(which, varargs) {
 		var old_limit = SYSCALLS.get();
 
 		if (old_limit) {
-			HEAP32[old_limit >> 2] 			=- 1;
-			HEAP32[old_limit + 4 >> 2] 	=- 1;
-			HEAP32[old_limit + 8 >> 2] 	=- 1;
-			HEAP32[old_limit + 12 >> 2] =- 1;
+			HEAP32[old_limit >> 2] 			= -1;
+			HEAP32[old_limit + 4 >> 2] 	= -1;
+			HEAP32[old_limit + 8 >> 2] 	= -1;
+			HEAP32[old_limit + 12 >> 2] = -1;
 		}
 
 		return 0;
@@ -7373,10 +7374,7 @@ function _gettimeofday(ptr) {
 
 
 
-
 var ___tm_timezone = allocate(intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
-
-
 
 
 
@@ -7472,7 +7470,7 @@ function _localtime_r(time, tmPtr) {
 	var yday 	= (date.getTime() - start.getTime()) / (1e3 * 60 * 60 * 24) | 0;
 
 	HEAP32[tmPtr + 28 >> 2] = yday;
-	HEAP32[tmPtr + 36 >> 2] =- (date.getTimezoneOffset() * 60);
+	HEAP32[tmPtr + 36 >> 2] = -(date.getTimezoneOffset() * 60);
 
 	var summerOffset = (new Date(2e3, 6, 1)).getTimezoneOffset();
 	var winterOffset = start.getTimezoneOffset();
@@ -9276,15 +9274,58 @@ if (Module['preInit']) {
 
 var shouldRunNow = false;
 
-// var shouldRunNow = true;
+/**
+	*
+	*	This code commented out perminently since we are no longer using
+	* this module AFTER initialization and config code as is the case
+	*	for the original usage (see wasm-imagemagick/dist/magick.js).
+	*
+	* var shouldRunNow = true;
+	*
+	* if (Module['noInitialRun']) {
+	* 	shouldRunNow = false;
+	* }
+	*
+	**/
 
-// if (Module['noInitialRun']) {
-// 	shouldRunNow = false;
-// }
 
 Module['noExitRuntime'] = true;
 
 run();
+
+const directory = '/pictures';
+FS.mkdir(directory);
+FS.chdir(directory);
+
+
+
+/**
+	*
+	*	Note that invoking 'Module['callMain']' before 
+	* 'onRuntimeInitialized' has run will fail with vague errors.
+	*
+	**/
+// Module.onRuntimeInitialized = function () {
+//   ... do image processing now.
+// };
+
+
+
+// Simple way to run this code as a working 'control' 
+// version against development and troubleshooting 
+// 'wasm-imagemagick.js' ONLY!!
+//
+// import {FS, Module} from './original-code-formatted.js';
+// const callMain = Module['callMain'];
+
+// 'await' a simple timer or set 'Module.onRuntimeInitialized' function.
+// const testTimer = () => {
+//   return new Promise(resolve => {
+//     setTimeout(() => {
+//       resolve();
+//     }, 1000);
+//   });
+// };
 
 
 export {
