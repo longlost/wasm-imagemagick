@@ -114,8 +114,8 @@ const init = async () => {
 		'_time': 									 time._time,
 		'_times': 								 time._times,
 		'_waitpid': 							 environment._waitpid,
-		'DYNAMICTOP_PTR': 				 memory.exposed.DYNAMICTOP_PTR,
-		'STACKTOP': 							 memory.exposed.STACKTOP
+		'DYNAMICTOP_PTR': 				 memory.DYNAMICTOP_PTR,
+		'STACKTOP': 							 memory.STACKTOP
 	};
 
 

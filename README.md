@@ -16,18 +16,22 @@ It is HIGHLY recommended to run this code in a Web Worker thread! I suggest usin
 Since ImageMagick can work with multiple input image files, `magick` accepts an array of file items.
 This must coincide with the number of input files in the `commands` array.
 
-`inputName` and `outputName` tell `magick` where to read/write to the virtual File System stub provided by emscripten, since this is how ImageMagic deals with image files in an OS environment.
+`inputName` and `outputName` tell `magick` where to read/write to the virtual File System stub provided by emscripten, since this is how ImageMagic handles files in an OS environment.
 
 `commands` are identical to the standard ImageMagic commands api.
 
 
+`magick` outputs a File object for `convert` and `mogrify` processes. 
+An array of one or more strings is returned for `identify` processes.
+
+
 ### Example usage.
 
-npm install --save comlink @longlost/wasm-imagemagick
+npm install --save @longlost/wasm-imagemagick
 
 or
 
-yarn add comlink @longlost/wasm-imagemagick
+yarn add @longlost/wasm-imagemagick
 
 
 ```
@@ -38,9 +42,11 @@ import magick from '@longlost/wasm-imagemagick/wasm-imagemagick.js';
 const processor = async file => {
   try {
 
-    // This example creates an output file with the same name as the input file.
-    const inputName  = `input_${file.name}`;  
-    const outputName = file.name;
+    // This example creates a new image in an attempt to reduce 
+    // the file size without sacrificing too much fidelity.
+    
+    const inputName  = file.name;  
+    const outputName = `small_${file.name};
     const fileItem   = {file, inputName};
 
     const commands  = [

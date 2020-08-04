@@ -1,7 +1,7 @@
 {
   "name": "@longlost/wasm-imagemagick",
-  "version": "2.1.0",
-  "description": "A port of https://github.com/KnicKnic/WASM-ImageMagick library. The port utilizes ES imports to clean up the api and removes the web worker abstraction..",
+  "version": "2.2.0",
+  "description": "Inspired by the https://github.com/KnicKnic/WASM-ImageMagick library. The module utilizes ES imports to simplify the api and removes the Web Worker abstraction.",
   "main": "wasm-imagemagick.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -10,6 +10,15 @@
     "type": "git",
     "url": "git+https://github.com/longlost/wasm-imagemagick.git"
   },
+  "keywords": [
+    "wasm",
+    "webassembly",
+    "worker",
+    "imagemagick",
+    "browser",
+    "image",
+    "processing"
+  ],
   "author": "Longlost Dev longlostdev@gmail.com",
   "license": "MIT",
   "bugs": {

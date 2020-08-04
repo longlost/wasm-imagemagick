@@ -60,7 +60,22 @@ ExitStatus.prototype = new Error;
 ExitStatus.prototype.constructor = ExitStatus;
 
 
-const out = console.log.bind(console);
+let output = [];
+
+const out = val => {
+	output.push(val);
+};
+
+// Reset output cache
+const getOutput = () => {
+	const temp = [...output];
+
+	output = [];
+
+	return temp;
+};	
+
+
 const err = console.warn.bind(console);
 
 
@@ -325,6 +340,7 @@ export default {
 	exit,
 	exposed,
 	getDevice,
+	getOutput,
 	intArrayFromString,
 	lengthBytesUTF8,
 	out,

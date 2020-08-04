@@ -76,6 +76,8 @@ const callMain = async commands => {
 		const ret = main(argc, argv, 0);
 
 		utils.exit(ret, true);
+
+		return utils.getOutput();
 	}
 	catch (error) {
 

@@ -1,4 +1,5 @@
 
+
 import {
 	ALLOC_STATIC,
 	STATIC_BASE,
@@ -10,13 +11,10 @@ import utils from './utils.js';
 
 // Exposed to be set/updated in other modules.
 const exposed = {
-	DYNAMICTOP_PTR: 0,
 	HEAP8: 					null,
 	HEAP16: 	 			null,
 	HEAP32: 	 			null,
 	HEAPU8: 	 			null,
-	STACKTOP: 			0,
-	STATICTOP: 			0,
 	// Set with 'setAsm' in 'wasm-interface'.
 	_emscripten_replace_memory: null,
 	_malloc: 			null,
@@ -27,15 +25,17 @@ const exposed = {
 };
 
 
-const TOTAL_STACK  = 5242880;
-let 	TOTAL_MEMORY = 16777216;
+const TOTAL_STACK  	 = 5242880;
+let 	TOTAL_MEMORY 	 = 16777216;
+let 	DYNAMICTOP_PTR = 0;
+let 	STATICTOP 		 = 0;
 
 
-exposed.STATICTOP = STATIC_BASE + 1212304;
-exposed.STATICTOP += 16;
-exposed.STATICTOP += 16;
-exposed.STATICTOP += 16;
-exposed.STATICTOP += 16;
+STATICTOP = STATIC_BASE + 1212304;
+STATICTOP += 16;
+STATICTOP += 16;
+STATICTOP += 16;
+STATICTOP += 16;
 
 
 if (TOTAL_MEMORY < TOTAL_STACK) {
@@ -56,9 +56,9 @@ else {
 
 
 const staticAlloc = size => {
-	const ret = exposed.STATICTOP;
+	const ret = STATICTOP;
 
-	exposed.STATICTOP = exposed.STATICTOP + size + 15 & -16;
+	STATICTOP = STATICTOP + size + 15 & -16;
 
 	return ret;
 };
@@ -112,7 +112,7 @@ const wasmReallocBuffer = size => {
 const enlargeMemory = () => {
 	const LIMIT = 2147483648 - WASM_PAGE_SIZE;
 
-	if (exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2] > LIMIT) {
+	if (exposed.HEAP32[DYNAMICTOP_PTR >> 2] > LIMIT) {
 		return false;
 	}
 
@@ -121,7 +121,7 @@ const enlargeMemory = () => {
 
 	TOTAL_MEMORY = Math.max(TOTAL_MEMORY, MIN_TOTAL_MEMORY);
 
-	while (TOTAL_MEMORY < exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2]) {
+	while (TOTAL_MEMORY < exposed.HEAP32[DYNAMICTOP_PTR >> 2]) {
 
 		if (TOTAL_MEMORY <= 536870912) {
 			TOTAL_MEMORY = utils.alignUp(2 * TOTAL_MEMORY, WASM_PAGE_SIZE);
@@ -147,16 +147,16 @@ const enlargeMemory = () => {
 
 const dynamicAlloc = size => {
 
-	const ret = exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2];
+	const ret = exposed.HEAP32[DYNAMICTOP_PTR >> 2];
 	const end = ret + size + 15 & -16;
 
-	exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2] = end;
+	exposed.HEAP32[DYNAMICTOP_PTR >> 2] = end;
 
 	if (end >= TOTAL_MEMORY) {
 		var success = enlargeMemory();
 
 		if (!success) {
-			exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2] = ret;
+			exposed.HEAP32[DYNAMICTOP_PTR >> 2] = ret;
 
 			return 0;
 		}
@@ -466,21 +466,24 @@ const alignMemory = (size, factor) => {
 updateGlobalBufferViews();
 
 
-let STACK_BASE = 0;
+const tmTimezone = allocate(utils.intArrayFromString('GMT'), 'i8', ALLOC_STATIC);
 
-exposed.DYNAMICTOP_PTR = staticAlloc(4);
-STACK_BASE = exposed.STACKTOP = alignMemory(exposed.STATICTOP);
+DYNAMICTOP_PTR = staticAlloc(4);
 
-const STACK_MAX 	 = STACK_BASE + TOTAL_STACK;
+
+const STACKTOP 		 = alignMemory(STATICTOP);
+const STACK_MAX 	 = STACKTOP + TOTAL_STACK;
 const DYNAMIC_BASE = alignMemory(STACK_MAX);
 
-exposed.HEAP32[exposed.DYNAMICTOP_PTR >> 2] = DYNAMIC_BASE;
+exposed.HEAP32[DYNAMICTOP_PTR >> 2] = DYNAMIC_BASE;
 exposed.staticSealed = true;
 
 
 export default {
 	___assert_fail,
 	_emscripten_memcpy_big,
+	DYNAMICTOP_PTR,
+	STACKTOP,
 	TOTAL_STACK,
 	Pointer_stringify,
 	abortOnCannotGrowMemory,
@@ -492,6 +495,7 @@ export default {
 	getMemory,
 	getTotalMemory,
 	staticAlloc,
+	tmTimezone,
 	updateGlobalBuffer,
 	updateGlobalBufferViews,
 	writeArrayToMemory,
