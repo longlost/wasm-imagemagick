@@ -1,6 +1,6 @@
 {
   "name": "@longlost/wasm-imagemagick",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Inspired by the https://github.com/KnicKnic/WASM-ImageMagick library. The module utilizes ES imports to simplify the api and removes the Web Worker abstraction.",
   "main": "wasm-imagemagick.js",
   "scripts": {
