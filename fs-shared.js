@@ -336,10 +336,10 @@ readlink = path => {
 };
 
 const readdir = path => {
-	const {node} = FS.lookupPath(path, {follow: true});
+	const {node} = lookupPath(path, {follow: true});
 
 	if (!node.node_ops.readdir) {
-		throw new FS.utils.ErrnoError(ERRNO_CODES.ENOTDIR);
+		throw new utils.ErrnoError(ERRNO_CODES.ENOTDIR);
 	}
 
 	return node.node_ops.readdir(node);
