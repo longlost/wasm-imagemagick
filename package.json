@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/longlost/wasm-imagemagick#readme",
   "dependencies": {
-    "@ungap/global-this": "^0.4.0",
-    "wasm-imagemagick": "^1.2.7"
+    "@ungap/global-this": "^0.4.3",
+    "wasm-imagemagick": "^1.2.8"
   }
 }

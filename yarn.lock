@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@ungap/global-this@^0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@ungap/global-this/-/global-this-0.4.0.tgz#a358647ec368aae9f6e80ea4420defb1ae78d7fe"
-  integrity sha512-2Ita9Z8L+GZKN/HhECVTDS/uXhjeSXZtAvPo4u/vVRMK1l/lDi/x72ARMvVrBnr8dq1UrFtPnmOapX/7ORX0aQ==
+"@ungap/global-this@^0.4.3":
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/@ungap/global-this/-/global-this-0.4.3.tgz#44cb668b03e7c4bc88cb6e6f9329d381131878ee"
+  integrity sha512-MuHEpDBurNVeD6mV9xBcAN2wfTwuaFQhHuhWkJuXmyVJ5P5sBCw+nnFpdfb0tAvgWkfefWCsAoAsh7MTUr3LPg==
 
 error-stack-parser@^2.0.6:
   version "2.0.6"
@@ -53,10 +53,10 @@ stacktrace-js@^2.0.0:
     stack-generator "^2.0.5"
     stacktrace-gps "^3.0.4"
 
-wasm-imagemagick@^1.2.7:
-  version "1.2.7"
-  resolved "https://registry.yarnpkg.com/wasm-imagemagick/-/wasm-imagemagick-1.2.7.tgz#3ca570a5914fdf2adfff21861678665f460cc8d0"
-  integrity sha512-I3VIzcKE1n3IrsmYfouLff0NfB+3TKEn2gNRfvSuBDIORSNL+3ukl0mC3pmt5p6X5QNCaksuaZNGJvmc0Oto7w==
+wasm-imagemagick@^1.2.8:
+  version "1.2.8"
+  resolved "https://registry.yarnpkg.com/wasm-imagemagick/-/wasm-imagemagick-1.2.8.tgz#218e3d5cad9ccc2ebef30ad01fbe090814b38f33"
+  integrity sha512-V7u80n7g+iAoV7sYgQKGSdG59J6/aSMGO0DDK0zxKnwOGjmVXyjP0yU4tX4cMrfC0t/Wk3I8TX7cmdbFQOYHpg==
   dependencies:
     p-map "^2.0.0"
     stacktrace-js "^2.0.0"
